@@ -1,0 +1,62 @@
+Date ,Client Name,Description,Receipt No,Client Location,Cleint Status,Units (KGs) (Size),Amount
+11/5/2026,Brian,2nd Load,1021,Wanye,Existing Client,10 Kgs,"Ksh1,700.00"
+11/5/2026,Roy,1st Load,1022,Ngong Road,Existing Client,4 Kgs,Ksh300.00
+11/5/2026,Hairmaster,1st Load,1023,Ngong Road,New,7 Kgs,Ksh700.00
+11/5/2026,Robery,1st Load,1024,,Existing Client,6 Kgs,Ksh500.00
+11/5/2026,IAN,2nd Load,1025,Karen,Existing Client,8 Kgs,"Ksh1,700.00"
+5/5/2026,Rachael,2nd Load,,,Existing Client,13 Kgs,"Ksh1,700.00"
+5/5/2026,Bugi,2nd Load,,Lenana Fairview,Existing Client,12 kgs,"Ksh1,700.00"
+5/5/2026,Laban,Sofa Cleaning,,Yellow Stone,Existing Client,5 Seater,"Ksh3,500.00"
+5/6/2026,Swaminarayan,Fumigation,,Langata,Existing Client,Kitchen,"Ksh3,000.00"
+5/6/2026,Bridgit,Carpet Cleaning,,Royal garden,Existing Client,(7x5) (6x4),-
+5/5/2026,Frank,Sofa Cleaning,,Kinoo,Existing Client,5 Seater,"Ksh2,500.00"
+5/4/2026,Maria,Toilet Cleaning,,Parklands,New,1 Toilet,"Ksh1,500.00"
+5/6/2026,Nyachera,Carpet Cleaning,,Ngando,Existing Client,(6x9x25),"Ksh1,350.00"
+5/7/2026,Kim,2nd Load,,Jamhuri,Existing Client,14 Kgs,"Ksh1,900.00"
+5/7/2026,Beth,Floor Scrubbing,1015,,Existing Client,,"Ksh3,500.00"
+5/7/2026,Wakesho,1st Load,1016,,Existing Client,,Ksh850.00
+5/10/2026,Priscillah,Sofa Cleaning,1017,Mideya,Existing Client,6 Seater,"Ksh3,600.00"
+5/10/2026,Phanice,3rd Load,1018,Jamhuri,Existing Client,20 Kgs,"Ksh2,000.00"
+5/10/2026,Nyachera,2nd Load,1020,Ngando,Existing Client,12 Kgs,"Ksh1,200.00"
+5/1/2026,Phanice,3rd Load,,Jamhuri,Existing Client,21 kgs,"Ksh2,000.00"
+5/1/2026,Razanah,1st Load,,Ngong Road,Existing Client,2 kgs,Ksh200.00
+5/2/2026,Roy,1st Load,,Ngong Road,Existing Client,4 kgs,Ksh300.00
+5/2/2026,Nyachera,Carpet Cleaning,,Bodega F1,Existing Client,12 Kgs,"Ksh2,400.00"
+5/2/2026,Nyachera,2nd Load,,Bodega F1,Existing Client,13 kgs,"Ksh1,200.00"
+5/2/2026,Peter Ngoe,1st Load,,Jamhuri,Existing Client,4 kgs,Ksh400.00
+5/3/2026,Hairmaster,1st Load,,Ngong Road,New,6 kgs,Ksh700.00
+,,,,,,,
+5/12/2026,Tiz,Carpet Cleaning,,Kileleshwa,Existing Client,(6x9x25),"Ksh1,350.00"
+5/13/2026,Sharon,Fumigation/Sofa cleaning,,ROysambu,Refferal,8 seater/ 2 bedroom,"Ksh8,500.00"
+5/14/2026,Rosey,3rd Load,,Millers Court,Existing Client,20 Kgs,"Ksh2,100.00"
+5/14/2026,Cynthia,3rd Load,,Jamhuri,Existing Client,18 kgs,"Ksh2,100.00"
+5/15/2026,Phanice,3rd Load,,Jamhuri,Existing Client,21 kgs,"Ksh2,000.00"
+5/15/2026,Razanah,1st Load,,Ngong Road,Existing Client,1 kg,Ksh150.00
+5/15/2026,Harison,1st Load,,,Existing Client,6 Kgs,"Ksh1,000.00"
+5/15/2026,Fazil,Carpet Cleaning,,,Existing Client,(6x9x25)2,"Ksh3,100.00"
+5/16/2026,Esther,Duvet Cleaning,,Ndemi,Existing Client,6x6,Ksh800.00
+5/16/2026,Nyachera,2nd Load,,Ngando,Existing Client,9 Kgs,"Ksh1,200.00"
+5/18/2026,Autolab,2nd Load,,Ngong Road,Existing Client,,"Ksh1,000.00"
+5/18/2026,Joy,Curtains/ Fleace Blanker,,,Existing Client,,"Ksh1,700.00"
+5/18/2026,Bugi,3rd Load & Duvet Cleaning,,Lenana Fairview,Existing Client,,"Ksh4,400.00"
+5/18/2026,Mitchelle Michuku,Fumigation,,Riara,Existing Client,,"Ksh6,600.00"
+5/18/2026,Viona,Sofa Cleaning & Carpet Cleaning,,Leshwa,Existing Client,,"Ksh14,400.00"
+5/18/2026,Delly,Carpet Cleaning,,Ndemi Gardens,Existing Client,,Ksh875.00
+5/18/2026,Eunice,Carpet Cleaning,,Ngando,Existing Client,(7x5x25) + (6x9x25),"Ksh2,225.00"
+,,,,,,,
+5/19/2026,Rosey,2nd Load,,Millers Court,Existing Client,14 Kgs,"Ksh1,500.00"
+5/19/2026,Rosey,Duvet Cleaning,,Millers Court,Existing Client,(4x6),"Ksh1,000.00"
+5/20/2026,Roy,1st Load,,Ngong Road,Existing Client,3 kgs,Ksh300.00
+5/21/2026,Razanah,1st Load,,Ngong Road,Existing Client,1 Kg,Ksh100.00
+5/21/2026,Rosey,5 Duvets,,Millers Court,Existing Client,,"Ksh3,450.00"
+5/21/2026,Peter Ngoe,1st Load,,Jamhuri,Existing Client,6 Kgs,Ksh700.00
+5/22/2026,Weru,10 Duvets,,Jamhuri,New,,"Ksh6,500.00"
+5/22/2026,Weru,6 fleece blankets,,,New,,"Ksh1,800.00"
+5/23/2026,Hairmaster,2nd Load,,Ngong Road,New,10 Kgs,"Ksh1,000.00"
+5/23/2026,Nyachera,2nd Load,,Ngando,Existing Client,9 Kgs,"Ksh1,200.00"
+5/23/2026,Nyachera,Duvet Cleaning,,Ngando,Existing Client,5x6,Ksh800.00
+5/25/2026,Linet,Curtains/Duvets,,Kawangware,Existing Client,6 kgs/ (6x6),"Ksh1,700.00"
+5/26/2026,Autolab,2nd Load,,Ngong Road,Existing Client,11 kgs,"Ksh1,000.00"
+5/27/2026,Robert,2nd Load,,Ndemi,Existing Client,9 Kgs,Ksh500.00
+5/27/2026,Razanah,1st Load,,Ngong Road,Existing Client,2 Kgs,Ksh200.00
+5/27/2026,Wayua,4th Load,,Ngong Road,Existing Client,28 kgs,"Ksh2,800.00"
