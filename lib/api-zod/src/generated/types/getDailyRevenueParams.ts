@@ -11,4 +11,12 @@ export type GetDailyRevenueParams = {
  * Month in YYYY-MM format
  */
 month?: string;
+/**
+ * Start date YYYY-MM-DD (inclusive); with 'to' overrides month
+ */
+from?: Date;
+/**
+ * End date YYYY-MM-DD (inclusive); with 'from' overrides month
+ */
+to?: Date;
 };

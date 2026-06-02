@@ -373,6 +373,14 @@ export type GetDashboardStatsParams = {
  * Month in YYYY-MM format (defaults to current month)
  */
 month?: string;
+/**
+ * Start date YYYY-MM-DD (inclusive); with 'to' overrides month
+ */
+from?: string;
+/**
+ * End date YYYY-MM-DD (inclusive); with 'from' overrides month
+ */
+to?: string;
 };
 
 export type GetDailyRevenueParams = {
@@ -380,14 +388,38 @@ export type GetDailyRevenueParams = {
  * Month in YYYY-MM format
  */
 month?: string;
+/**
+ * Start date YYYY-MM-DD (inclusive); with 'to' overrides month
+ */
+from?: string;
+/**
+ * End date YYYY-MM-DD (inclusive); with 'from' overrides month
+ */
+to?: string;
 };
 
 export type GetRevenueByServiceParams = {
 month?: string;
+/**
+ * Start date YYYY-MM-DD (inclusive); with 'to' overrides month
+ */
+from?: string;
+/**
+ * End date YYYY-MM-DD (inclusive); with 'from' overrides month
+ */
+to?: string;
 };
 
 export type GetTopClientsParams = {
 month?: string;
+/**
+ * Start date YYYY-MM-DD (inclusive); with 'to' overrides month
+ */
+from?: string;
+/**
+ * End date YYYY-MM-DD (inclusive); with 'from' overrides month
+ */
+to?: string;
 };
 
 export type ListJobsParams = {

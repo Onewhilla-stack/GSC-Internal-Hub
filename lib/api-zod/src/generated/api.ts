@@ -54,7 +54,9 @@ export const UpdatePasswordBody = zod.object({
  * @summary Get dashboard summary stats for a given month
  */
 export const GetDashboardStatsQueryParams = zod.object({
-  "month": zod.coerce.string().optional().describe('Month in YYYY-MM format (defaults to current month)')
+  "month": zod.coerce.string().optional().describe('Month in YYYY-MM format (defaults to current month)'),
+  "from": zod.date().optional().describe('Start date YYYY-MM-DD (inclusive); with \'to\' overrides month'),
+  "to": zod.date().optional().describe('End date YYYY-MM-DD (inclusive); with \'from\' overrides month')
 })
 
 export const GetDashboardStatsResponse = zod.object({
@@ -73,7 +75,9 @@ export const GetDashboardStatsResponse = zod.object({
  * @summary Daily revenue for current month (bar chart data)
  */
 export const GetDailyRevenueQueryParams = zod.object({
-  "month": zod.coerce.string().optional().describe('Month in YYYY-MM format')
+  "month": zod.coerce.string().optional().describe('Month in YYYY-MM format'),
+  "from": zod.date().optional().describe('Start date YYYY-MM-DD (inclusive); with \'to\' overrides month'),
+  "to": zod.date().optional().describe('End date YYYY-MM-DD (inclusive); with \'from\' overrides month')
 })
 
 export const GetDailyRevenueResponseItem = zod.object({
@@ -87,7 +91,9 @@ export const GetDailyRevenueResponse = zod.array(GetDailyRevenueResponseItem)
  * @summary Revenue by service type (donut chart data)
  */
 export const GetRevenueByServiceQueryParams = zod.object({
-  "month": zod.coerce.string().optional()
+  "month": zod.coerce.string().optional(),
+  "from": zod.date().optional().describe('Start date YYYY-MM-DD (inclusive); with \'to\' overrides month'),
+  "to": zod.date().optional().describe('End date YYYY-MM-DD (inclusive); with \'from\' overrides month')
 })
 
 export const GetRevenueByServiceResponseItem = zod.object({
@@ -101,7 +107,9 @@ export const GetRevenueByServiceResponse = zod.array(GetRevenueByServiceResponse
  * @summary Top 5 clients by amount this month
  */
 export const GetTopClientsQueryParams = zod.object({
-  "month": zod.coerce.string().optional()
+  "month": zod.coerce.string().optional(),
+  "from": zod.date().optional().describe('Start date YYYY-MM-DD (inclusive); with \'to\' overrides month'),
+  "to": zod.date().optional().describe('End date YYYY-MM-DD (inclusive); with \'from\' overrides month')
 })
 
 export const GetTopClientsResponseItem = zod.object({
