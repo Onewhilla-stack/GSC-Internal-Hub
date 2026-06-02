@@ -7,5 +7,16 @@
  */
 
 export type GetReceiptsSummaryParams = {
+/**
+ * Month YYYY-MM (fallback when from/to absent; defaults to current month)
+ */
 month?: string;
+/**
+ * Range start date YYYY-MM-DD (inclusive)
+ */
+from?: string;
+/**
+ * Range end date YYYY-MM-DD (inclusive)
+ */
+to?: string;
 };

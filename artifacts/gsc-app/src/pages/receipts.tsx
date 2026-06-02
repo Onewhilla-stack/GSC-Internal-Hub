@@ -12,6 +12,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
+import { useDateRange } from "@/lib/date-range";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -205,7 +207,7 @@ export default function Receipts() {
   const queryClient = useQueryClient();
   const [location] = useLocation();
 
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const { from, to } = useDateRange();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -249,15 +251,17 @@ export default function Receipts() {
 
   // Queries
   const listKey = getListReceiptsQueryKey({
-    month,
+    from,
+    to,
     status: statusFilter !== "all" ? statusFilter : undefined,
     search: search || undefined,
   });
-  const summaryKey = getGetReceiptsSummaryQueryKey({ month });
+  const summaryKey = getGetReceiptsSummaryQueryKey({ from, to });
 
   const { data: receipts, isLoading } = useListReceipts(
     {
-      month,
+      from,
+      to,
       status: statusFilter !== "all" ? statusFilter : undefined,
       search: search || undefined,
     },
@@ -265,7 +269,7 @@ export default function Receipts() {
   );
 
   const { data: summary } = useGetReceiptsSummary(
-    { month },
+    { from, to },
     { query: { queryKey: summaryKey } }
   );
 
@@ -331,12 +335,7 @@ export default function Receipts() {
             <h1 className="text-3xl font-bold tracking-tight text-primary">Receipts</h1>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="w-44 bg-white"
-            />
+            <DateRangePicker />
             <Button
               className="bg-secondary text-black hover:bg-secondary/90 gap-2"
               onClick={() => setCreateOpen(true)}

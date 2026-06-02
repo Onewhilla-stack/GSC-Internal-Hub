@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
+import { resolveDateRange } from "../lib/date-range";
 
 const router = Router();
 
@@ -27,11 +28,13 @@ router.get("/expenses", requireAuth, requireDirector, async (req, res): Promise<
   }
 
   const conditions = [];
-  if (params.data.month) {
-    const [year, mon] = params.data.month.split("-").map(Number);
-    const start = new Date(year, mon - 1, 1).toISOString().split("T")[0];
-    const end = new Date(year, mon, 1).toISOString().split("T")[0];
-    conditions.push(gte(expensesTable.date, start), lt(expensesTable.date, end));
+  if (params.data.from || params.data.to || params.data.month) {
+    const resolved = resolveDateRange(params.data);
+    if (!resolved.ok) {
+      res.status(400).json({ error: resolved.error });
+      return;
+    }
+    conditions.push(gte(expensesTable.date, resolved.range.start), lt(expensesTable.date, resolved.range.end));
   }
   if (params.data.category) {
     conditions.push(eq(expensesTable.category, params.data.category));
@@ -101,14 +104,12 @@ router.get("/expenses/monthly-summary", requireAuth, requireDirector, async (req
     return;
   }
 
-  const monthStr = params.data.month ?? "";
-  if (!/^\d{4}-\d{2}$/.test(monthStr)) {
-    res.status(400).json({ error: "month must be in YYYY-MM format" });
+  const resolved = resolveDateRange(params.data);
+  if (!resolved.ok) {
+    res.status(400).json({ error: resolved.error });
     return;
   }
-  const [year, mon] = monthStr.split("-").map(Number);
-  const start = new Date(year, mon - 1, 1).toISOString().split("T")[0];
-  const end = new Date(year, mon, 1).toISOString().split("T")[0];
+  const { start, end } = resolved.range;
 
   const rows = await db.select({
     category: expensesTable.category,

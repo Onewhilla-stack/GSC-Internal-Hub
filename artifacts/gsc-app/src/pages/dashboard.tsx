@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { useGetDashboardStats, useGetDailyRevenue, useGetRevenueByService, useGetWorkerDashboard, useListJobs, useCreateJob, getListJobsQueryKey } from "@workspace/api-client-react";
-import { formatKES, formatDate } from "@/lib/format";
+import { useGetDashboardStats, useGetDailyRevenue, useGetRevenueByService, useListJobs, useCreateJob, getListJobsQueryKey } from "@workspace/api-client-react";
+import { formatKES } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpIcon, ArrowDownIcon, Activity, Banknote, Briefcase, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/lib/auth";
+import { useDateRange } from "@/lib/date-range";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,65 +22,9 @@ export default function Dashboard() {
   return isDirector ? <DirectorDashboard /> : <WorkerDashboard username={user?.username ?? "worker"} />;
 }
 
-// Local-time YYYY-MM-DD (avoids UTC off-by-one around day/month boundaries).
-const pad = (n: number) => String(n).padStart(2, "0");
-const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-type RangePreset = "this-week" | "last-7" | "this-month" | "last-month" | "last-30" | "this-year" | "custom";
-
-const PRESET_LABELS: { value: RangePreset; label: string }[] = [
-  { value: "this-week", label: "This Week" },
-  { value: "last-7", label: "Last 7 Days" },
-  { value: "this-month", label: "This Month" },
-  { value: "last-month", label: "Last Month" },
-  { value: "last-30", label: "Last 30 Days" },
-  { value: "this-year", label: "This Year" },
-  { value: "custom", label: "Custom" },
-];
-
-function presetRange(preset: RangePreset): { from: string; to: string } {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const minusDays = (n: number) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - n);
-    return d;
-  };
-  switch (preset) {
-    case "this-week": {
-      const dow = (today.getDay() + 6) % 7; // Monday = 0
-      return { from: fmtDate(minusDays(dow)), to: fmtDate(today) };
-    }
-    case "last-7":
-      return { from: fmtDate(minusDays(6)), to: fmtDate(today) };
-    case "last-month":
-      return {
-        from: fmtDate(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
-        to: fmtDate(new Date(now.getFullYear(), now.getMonth(), 0)),
-      };
-    case "last-30":
-      return { from: fmtDate(minusDays(29)), to: fmtDate(today) };
-    case "this-year":
-      return { from: fmtDate(new Date(now.getFullYear(), 0, 1)), to: fmtDate(today) };
-    case "this-month":
-    default:
-      return {
-        from: fmtDate(new Date(now.getFullYear(), now.getMonth(), 1)),
-        to: fmtDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
-      };
-  }
-}
-
 // ─── Director Dashboard ────────────────────────────────────────────────────
 function DirectorDashboard() {
-  const [preset, setPreset] = useState<RangePreset>("this-month");
-  const [range, setRange] = useState(() => presetRange("this-month"));
-  const { from, to } = range;
-
-  const applyPreset = (p: RangePreset) => {
-    setPreset(p);
-    if (p !== "custom") setRange(presetRange(p));
-  };
+  const { from, to } = useDateRange();
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats({ from, to });
   const { data: dailyRev } = useGetDailyRevenue({ from, to });
@@ -94,31 +39,7 @@ function DirectorDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={preset} onValueChange={(v) => applyPreset(v as RangePreset)}>
-            <SelectTrigger className="w-40 bg-white"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PRESET_LABELS.map((p) => (
-                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            type="date"
-            value={from}
-            max={to}
-            onChange={(e) => { setPreset("custom"); setRange((r) => ({ ...r, from: e.target.value })); }}
-            className="w-40 bg-white"
-          />
-          <span className="text-sm text-gray-400">to</span>
-          <Input
-            type="date"
-            value={to}
-            min={from}
-            onChange={(e) => { setPreset("custom"); setRange((r) => ({ ...r, to: e.target.value })); }}
-            className="w-40 bg-white"
-          />
-        </div>
+        <DateRangePicker />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -424,19 +424,49 @@ to?: string;
 
 export type ListJobsParams = {
 /**
- * Filter by month YYYY-MM
+ * Filter by month YYYY-MM (fallback when from/to absent)
  */
 month?: string;
+/**
+ * Range start date YYYY-MM-DD (inclusive)
+ */
+from?: string;
+/**
+ * Range end date YYYY-MM-DD (inclusive)
+ */
+to?: string;
 serviceType?: string;
 };
 
 export type ListExpensesParams = {
+/**
+ * Filter by month YYYY-MM (fallback when from/to absent)
+ */
 month?: string;
+/**
+ * Range start date YYYY-MM-DD (inclusive)
+ */
+from?: string;
+/**
+ * Range end date YYYY-MM-DD (inclusive)
+ */
+to?: string;
 category?: string;
 };
 
 export type GetExpensesMonthlySummaryParams = {
-month: string;
+/**
+ * Month YYYY-MM (fallback when from/to absent; defaults to current month)
+ */
+month?: string;
+/**
+ * Range start date YYYY-MM-DD (inclusive)
+ */
+from?: string;
+/**
+ * Range end date YYYY-MM-DD (inclusive)
+ */
+to?: string;
 };
 
 export type ListClientsParams = {
@@ -445,14 +475,36 @@ status?: string;
 };
 
 export type ListReceiptsParams = {
+/**
+ * Filter by month YYYY-MM (fallback when from/to absent)
+ */
 month?: string;
+/**
+ * Range start date YYYY-MM-DD (inclusive)
+ */
+from?: string;
+/**
+ * Range end date YYYY-MM-DD (inclusive)
+ */
+to?: string;
 status?: string;
 search?: string;
 serviceType?: string;
 };
 
 export type GetReceiptsSummaryParams = {
+/**
+ * Month YYYY-MM (fallback when from/to absent; defaults to current month)
+ */
 month?: string;
+/**
+ * Range start date YYYY-MM-DD (inclusive)
+ */
+from?: string;
+/**
+ * Range end date YYYY-MM-DD (inclusive)
+ */
+to?: string;
 };
 
 export type GetMonthDrillParams = {

@@ -1532,7 +1532,7 @@ export const useImportExpenses = <TError = ErrorType<unknown>,
       return useMutation(getImportExpensesMutationOptions(options));
     }
 
-export const getGetExpensesMonthlySummaryUrl = (params: GetExpensesMonthlySummaryParams,) => {
+export const getGetExpensesMonthlySummaryUrl = (params?: GetExpensesMonthlySummaryParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1550,7 +1550,7 @@ export const getGetExpensesMonthlySummaryUrl = (params: GetExpensesMonthlySummar
 /**
  * @summary Monthly expense breakdown by category
  */
-export const getExpensesMonthlySummary = async (params: GetExpensesMonthlySummaryParams, options?: RequestInit): Promise<ExpenseCategorySummary[]> => {
+export const getExpensesMonthlySummary = async (params?: GetExpensesMonthlySummaryParams, options?: RequestInit): Promise<ExpenseCategorySummary[]> => {
 
   return customFetch<ExpenseCategorySummary[]>(getGetExpensesMonthlySummaryUrl(params),
   {
@@ -1572,7 +1572,7 @@ export const getGetExpensesMonthlySummaryQueryKey = (params?: GetExpensesMonthly
     }
 
 
-export const getGetExpensesMonthlySummaryQueryOptions = <TData = Awaited<ReturnType<typeof getExpensesMonthlySummary>>, TError = ErrorType<unknown>>(params: GetExpensesMonthlySummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpensesMonthlySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetExpensesMonthlySummaryQueryOptions = <TData = Awaited<ReturnType<typeof getExpensesMonthlySummary>>, TError = ErrorType<unknown>>(params?: GetExpensesMonthlySummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpensesMonthlySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1599,7 +1599,7 @@ export type GetExpensesMonthlySummaryQueryError = ErrorType<unknown>
  */
 
 export function useGetExpensesMonthlySummary<TData = Awaited<ReturnType<typeof getExpensesMonthlySummary>>, TError = ErrorType<unknown>>(
- params: GetExpensesMonthlySummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpensesMonthlySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetExpensesMonthlySummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpensesMonthlySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -2374,7 +2374,7 @@ export const getGetReceiptsSummaryUrl = (params?: GetReceiptsSummaryParams,) => 
 }
 
 /**
- * @summary Summary counts and totals for receipts this month
+ * @summary Summary counts and totals for receipts in a date range
  */
 export const getReceiptsSummary = async (params?: GetReceiptsSummaryParams, options?: RequestInit): Promise<ReceiptsSummary> => {
 
@@ -2421,7 +2421,7 @@ export type GetReceiptsSummaryQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Summary counts and totals for receipts this month
+ * @summary Summary counts and totals for receipts in a date range
  */
 
 export function useGetReceiptsSummary<TData = Awaited<ReturnType<typeof getReceiptsSummary>>, TError = ErrorType<unknown>>(

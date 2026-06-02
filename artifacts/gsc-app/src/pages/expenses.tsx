@@ -13,6 +13,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useDateRange } from "@/lib/date-range";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { Upload } from "lucide-react";
 import Papa from "papaparse";
 
@@ -28,14 +30,15 @@ const expenseSchema = z.object({
 export default function Expenses() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const { from, to } = useDateRange();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   
   const { data: expenses, isLoading } = useListExpenses({ 
-    month, 
+    from,
+    to,
     category: categoryFilter !== "all" ? categoryFilter : undefined 
   });
-  const { data: summary } = useGetExpensesMonthlySummary({ month }, { query: { enabled: !!month, queryKey: getGetExpensesMonthlySummaryQueryKey({ month }) } });
+  const { data: summary } = useGetExpensesMonthlySummary({ from, to }, { query: { queryKey: getGetExpensesMonthlySummaryQueryKey({ from, to }) } });
   
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
@@ -51,7 +54,7 @@ export default function Expenses() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetExpensesMonthlySummaryQueryKey({ month }) });
+        queryClient.invalidateQueries({ queryKey: getGetExpensesMonthlySummaryQueryKey({ from, to }) });
         form.reset({
           ...form.getValues(),
           description: "",
@@ -107,7 +110,7 @@ export default function Expenses() {
               {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-48 bg-white" />
+          <DateRangePicker />
           
           <div className="relative">
             <input 

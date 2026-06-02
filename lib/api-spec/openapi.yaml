@@ -259,7 +259,17 @@ paths:
           name: month
           schema:
             type: string
-          description: "Filter by month YYYY-MM"
+          description: "Filter by month YYYY-MM (fallback when from/to absent)"
+        - in: query
+          name: from
+          schema:
+            type: string
+          description: "Range start date YYYY-MM-DD (inclusive)"
+        - in: query
+          name: to
+          schema:
+            type: string
+          description: "Range end date YYYY-MM-DD (inclusive)"
         - in: query
           name: serviceType
           schema:
@@ -376,6 +386,17 @@ paths:
           name: month
           schema:
             type: string
+          description: "Filter by month YYYY-MM (fallback when from/to absent)"
+        - in: query
+          name: from
+          schema:
+            type: string
+          description: "Range start date YYYY-MM-DD (inclusive)"
+        - in: query
+          name: to
+          schema:
+            type: string
+          description: "Range end date YYYY-MM-DD (inclusive)"
         - in: query
           name: category
           schema:
@@ -436,7 +457,17 @@ paths:
           name: month
           schema:
             type: string
-          required: true
+          description: "Month YYYY-MM (fallback when from/to absent; defaults to current month)"
+        - in: query
+          name: from
+          schema:
+            type: string
+          description: "Range start date YYYY-MM-DD (inclusive)"
+        - in: query
+          name: to
+          schema:
+            type: string
+          description: "Range end date YYYY-MM-DD (inclusive)"
       responses:
         "200":
           description: Monthly summary
@@ -612,6 +643,17 @@ paths:
           in: query
           schema:
             type: string
+          description: "Filter by month YYYY-MM (fallback when from/to absent)"
+        - name: from
+          in: query
+          schema:
+            type: string
+          description: "Range start date YYYY-MM-DD (inclusive)"
+        - name: to
+          in: query
+          schema:
+            type: string
+          description: "Range end date YYYY-MM-DD (inclusive)"
         - name: status
           in: query
           schema:
@@ -655,12 +697,23 @@ paths:
     get:
       operationId: getReceiptsSummary
       tags: [receipts]
-      summary: Summary counts and totals for receipts this month
+      summary: Summary counts and totals for receipts in a date range
       parameters:
         - name: month
           in: query
           schema:
             type: string
+          description: "Month YYYY-MM (fallback when from/to absent; defaults to current month)"
+        - name: from
+          in: query
+          schema:
+            type: string
+          description: "Range start date YYYY-MM-DD (inclusive)"
+        - name: to
+          in: query
+          schema:
+            type: string
+          description: "Range end date YYYY-MM-DD (inclusive)"
       responses:
         "200":
           description: Summary

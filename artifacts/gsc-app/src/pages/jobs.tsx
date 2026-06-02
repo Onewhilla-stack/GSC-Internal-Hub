@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Pencil, Trash2, ReceiptText, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useDateRange } from "@/lib/date-range";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import Papa from "papaparse";
@@ -39,9 +41,10 @@ export default function Jobs() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const { from, to } = useDateRange();
   const [editJob, setEditJob] = useState<{ id: number } & JobFormData | null>(null);
-  const { data: jobs, isLoading } = useListJobs({ month });
+  const { data: jobs, isLoading } = useListJobs({ from, to });
+  const jobsKey = getListJobsQueryKey({ from, to });
 
   const form = useForm<JobFormData>({
     resolver: zodResolver(jobSchema),
@@ -63,7 +66,7 @@ export default function Jobs() {
   const createJob = useCreateJob({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListJobsQueryKey({ month }) });
+        queryClient.invalidateQueries({ queryKey: jobsKey });
         form.reset({ ...form.getValues(), clientName: "", amount: 0, location: "" });
         toast({ title: "Job logged successfully" });
       }
@@ -73,7 +76,7 @@ export default function Jobs() {
   const updateJob = useUpdateJob({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListJobsQueryKey({ month }) });
+        queryClient.invalidateQueries({ queryKey: jobsKey });
         setEditJob(null);
         toast({ title: "Job updated" });
       }
@@ -83,7 +86,7 @@ export default function Jobs() {
   const deleteJob = useDeleteJob({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListJobsQueryKey({ month }) });
+        queryClient.invalidateQueries({ queryKey: jobsKey });
         toast({ title: "Job deleted" });
       }
     }
@@ -93,7 +96,7 @@ export default function Jobs() {
   const importJobs = useImportJobs({
     mutation: {
       onSuccess: (res) => {
-        queryClient.invalidateQueries({ queryKey: getListJobsQueryKey({ month }) });
+        queryClient.invalidateQueries({ queryKey: jobsKey });
         toast({ title: `Imported ${res.imported} jobs${res.errors ? ` (${res.errors} skipped)` : ""}` });
       },
       onError: () => toast({ title: "Import failed", variant: "destructive" }),
@@ -177,7 +180,7 @@ export default function Jobs() {
           <Button variant="outline" className="gap-2" disabled={importJobs.isPending} onClick={() => fileInputRef.current?.click()}>
             {importJobs.isPending ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />} Import CSV
           </Button>
-          <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-48 bg-white" />
+          <DateRangePicker />
         </div>
       </div>
 
@@ -245,7 +248,7 @@ export default function Jobs() {
               {isLoading ? (
                 <TableRow><TableCell colSpan={isDirector ? 10 : 5} className="text-center h-24"><Spinner /></TableCell></TableRow>
               ) : jobs?.length === 0 ? (
-                <TableRow><TableCell colSpan={isDirector ? 10 : 5} className="text-center h-24 text-gray-500">No jobs recorded for this month</TableCell></TableRow>
+                <TableRow><TableCell colSpan={isDirector ? 10 : 5} className="text-center h-24 text-gray-500">No jobs recorded for this period</TableCell></TableRow>
               ) : (
                 jobs?.map(job => (
                   <TableRow key={job.id}>

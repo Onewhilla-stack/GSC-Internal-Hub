@@ -7,6 +7,17 @@
  */
 
 export type ListExpensesParams = {
+/**
+ * Filter by month YYYY-MM (fallback when from/to absent)
+ */
 month?: string;
+/**
+ * Range start date YYYY-MM-DD (inclusive)
+ */
+from?: string;
+/**
+ * Range end date YYYY-MM-DD (inclusive)
+ */
+to?: string;
 category?: string;
 };

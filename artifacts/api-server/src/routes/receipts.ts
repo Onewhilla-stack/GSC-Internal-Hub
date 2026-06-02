@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
+import { resolveDateRange } from "../lib/date-range";
 
 const router = Router();
 
@@ -49,10 +50,12 @@ router.get("/receipts/summary", requireAuth, async (req, res): Promise<void> => 
     return;
   }
 
-  const month = params.data.month ?? new Date().toISOString().slice(0, 7);
-  const [year, mon] = month.split("-").map(Number);
-  const start = new Date(year, mon - 1, 1).toISOString().split("T")[0];
-  const end = new Date(year, mon, 1).toISOString().split("T")[0];
+  const resolved = resolveDateRange(params.data);
+  if (!resolved.ok) {
+    res.status(400).json({ error: resolved.error });
+    return;
+  }
+  const { start, end } = resolved.range;
 
   const rows = await db.select().from(receiptsTable)
     .where(and(gte(receiptsTable.date, start), lt(receiptsTable.date, end)));
@@ -77,11 +80,13 @@ router.get("/receipts", requireAuth, async (req, res): Promise<void> => {
 
   const conditions: ReturnType<typeof eq>[] = [];
 
-  if (params.data.month) {
-    const [year, mon] = params.data.month.split("-").map(Number);
-    const start = new Date(year, mon - 1, 1).toISOString().split("T")[0];
-    const end = new Date(year, mon, 1).toISOString().split("T")[0];
-    conditions.push(gte(receiptsTable.date, start) as any, lt(receiptsTable.date, end) as any);
+  if (params.data.from || params.data.to || params.data.month) {
+    const resolved = resolveDateRange(params.data);
+    if (!resolved.ok) {
+      res.status(400).json({ error: resolved.error });
+      return;
+    }
+    conditions.push(gte(receiptsTable.date, resolved.range.start) as any, lt(receiptsTable.date, resolved.range.end) as any);
   }
   if (params.data.status) {
     conditions.push(eq(receiptsTable.paymentStatus, params.data.status) as any);

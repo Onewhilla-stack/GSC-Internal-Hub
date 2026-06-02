@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
+import { resolveDateRange } from "../lib/date-range";
 
 const router = Router();
 
@@ -32,11 +33,13 @@ router.get("/jobs", requireAuth, async (req, res): Promise<void> => {
   }
 
   const conditions = [];
-  if (params.data.month) {
-    const [year, mon] = params.data.month.split("-").map(Number);
-    const start = new Date(year, mon - 1, 1).toISOString().split("T")[0];
-    const end = new Date(year, mon, 1).toISOString().split("T")[0];
-    conditions.push(gte(jobsTable.date, start), lt(jobsTable.date, end));
+  if (params.data.from || params.data.to || params.data.month) {
+    const resolved = resolveDateRange(params.data);
+    if (!resolved.ok) {
+      res.status(400).json({ error: resolved.error });
+      return;
+    }
+    conditions.push(gte(jobsTable.date, resolved.range.start), lt(jobsTable.date, resolved.range.end));
   }
   if (params.data.serviceType) {
     conditions.push(eq(jobsTable.serviceType, params.data.serviceType));

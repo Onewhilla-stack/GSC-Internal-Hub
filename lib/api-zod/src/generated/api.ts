@@ -145,7 +145,9 @@ export const GetRecentJobsResponse = zod.array(GetRecentJobsResponseItem)
  * @summary List jobs with optional filters
  */
 export const ListJobsQueryParams = zod.object({
-  "month": zod.coerce.string().optional().describe('Filter by month YYYY-MM'),
+  "month": zod.coerce.string().optional().describe('Filter by month YYYY-MM (fallback when from\/to absent)'),
+  "from": zod.coerce.string().optional().describe('Range start date YYYY-MM-DD (inclusive)'),
+  "to": zod.coerce.string().optional().describe('Range end date YYYY-MM-DD (inclusive)'),
   "serviceType": zod.coerce.string().optional()
 })
 
@@ -277,7 +279,9 @@ export const DeleteJobParams = zod.object({
  * @summary List expenses with filters
  */
 export const ListExpensesQueryParams = zod.object({
-  "month": zod.coerce.string().optional(),
+  "month": zod.coerce.string().optional().describe('Filter by month YYYY-MM (fallback when from\/to absent)'),
+  "from": zod.coerce.string().optional().describe('Range start date YYYY-MM-DD (inclusive)'),
+  "to": zod.coerce.string().optional().describe('Range end date YYYY-MM-DD (inclusive)'),
   "category": zod.coerce.string().optional()
 })
 
@@ -325,7 +329,9 @@ export const ImportExpensesResponse = zod.object({
  * @summary Monthly expense breakdown by category
  */
 export const GetExpensesMonthlySummaryQueryParams = zod.object({
-  "month": zod.coerce.string()
+  "month": zod.coerce.string().optional().describe('Month YYYY-MM (fallback when from\/to absent; defaults to current month)'),
+  "from": zod.coerce.string().optional().describe('Range start date YYYY-MM-DD (inclusive)'),
+  "to": zod.coerce.string().optional().describe('Range end date YYYY-MM-DD (inclusive)')
 })
 
 export const GetExpensesMonthlySummaryResponseItem = zod.object({
@@ -508,7 +514,9 @@ export const DeleteClientParams = zod.object({
  * @summary List all receipts
  */
 export const ListReceiptsQueryParams = zod.object({
-  "month": zod.coerce.string().optional(),
+  "month": zod.coerce.string().optional().describe('Filter by month YYYY-MM (fallback when from\/to absent)'),
+  "from": zod.coerce.string().optional().describe('Range start date YYYY-MM-DD (inclusive)'),
+  "to": zod.coerce.string().optional().describe('Range end date YYYY-MM-DD (inclusive)'),
   "status": zod.coerce.string().optional(),
   "search": zod.coerce.string().optional(),
   "serviceType": zod.coerce.string().optional()
@@ -559,10 +567,12 @@ export const CreateReceiptBody = zod.object({
 
 
 /**
- * @summary Summary counts and totals for receipts this month
+ * @summary Summary counts and totals for receipts in a date range
  */
 export const GetReceiptsSummaryQueryParams = zod.object({
-  "month": zod.coerce.string().optional()
+  "month": zod.coerce.string().optional().describe('Month YYYY-MM (fallback when from\/to absent; defaults to current month)'),
+  "from": zod.coerce.string().optional().describe('Range start date YYYY-MM-DD (inclusive)'),
+  "to": zod.coerce.string().optional().describe('Range end date YYYY-MM-DD (inclusive)')
 })
 
 export const GetReceiptsSummaryResponse = zod.object({
