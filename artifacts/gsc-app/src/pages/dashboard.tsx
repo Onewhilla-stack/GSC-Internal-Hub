@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useGetDashboardStats, useGetDailyRevenue, useGetRevenueByService, useGetWorkerDashboard, useListJobs, useCreateJob, getListJobsQueryKey } from "@workspace/api-client-react";
 import { formatKES, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,11 +21,18 @@ export default function Dashboard() {
   return isDirector ? <DirectorDashboard /> : <WorkerDashboard username={user?.username ?? "worker"} />;
 }
 
+// Local-time YYYY-MM (avoids UTC off-by-one around month boundaries).
+function currentMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 // ─── Director Dashboard ────────────────────────────────────────────────────
 function DirectorDashboard() {
-  const { data: stats, isLoading: statsLoading } = useGetDashboardStats();
-  const { data: dailyRev } = useGetDailyRevenue();
-  const { data: serviceRev } = useGetRevenueByService();
+  const [month, setMonth] = useState(currentMonth());
+  const { data: stats, isLoading: statsLoading } = useGetDashboardStats({ month });
+  const { data: dailyRev } = useGetDailyRevenue({ month });
+  const { data: serviceRev } = useGetRevenueByService({ month });
   const COLORS = ['#29ABE2', '#F5C518', '#000000', '#888888', '#E22929'];
 
   if (statsLoading) {
@@ -35,9 +43,12 @@ function DirectorDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h1>
-        <div className="text-sm font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full border shadow-sm">
-          Current Month
-        </div>
+        <Input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="w-48 bg-white"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -50,7 +61,7 @@ function DirectorDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="col-span-2 shadow-sm border-gray-200">
           <CardHeader>
-            <CardTitle className="text-primary text-lg">Daily Revenue (This Month)</CardTitle>
+            <CardTitle className="text-primary text-lg">Daily Revenue</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
