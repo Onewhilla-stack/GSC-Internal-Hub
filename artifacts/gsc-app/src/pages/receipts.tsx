@@ -1,283 +1,676 @@
-import { useState } from "react";
-import { useListReceipts, useCreateReceipt, useListJobs, getListReceiptsQueryKey } from "@workspace/api-client-react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import {
+  useListReceipts,
+  useCreateReceipt,
+  useUpdateReceipt,
+  useDeleteReceipt,
+  useGetReceiptsSummary,
+  getListReceiptsQueryKey,
+  getGetReceiptsSummaryQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useForm } from "react-hook-form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Printer } from "lucide-react";
+import { Search, Plus, Eye, Download, Pencil, Trash2, ReceiptText, CheckCircle, Clock, AlertCircle, FileText } from "lucide-react";
 
-const receiptSchema = z.object({
-  jobId: z.coerce.number().optional().nullable(),
-  clientName: z.string().min(1, "Client required"),
+// ─── Types ────────────────────────────────────────────────────────────────────
+type ReceiptRow = {
+  id: number;
+  receiptNumber: string;
+  jobId?: number | null;
+  clientName: string;
+  serviceType: string;
+  description?: string | null;
+  amount: number;
+  date: string;
+  paymentStatus: string;
+  notes?: string | null;
+  createdBy?: string | null;
+  lastEditedBy?: string | null;
+  lastEditedAt?: string | null;
+  createdAt: string;
+};
+
+// ─── Schemas ──────────────────────────────────────────────────────────────────
+const createReceiptSchema = z.object({
+  clientName: z.string().min(1, "Client name required"),
   serviceType: z.string().min(1, "Service required"),
   description: z.string().optional(),
-  amount: z.coerce.number().min(0, "Invalid amount"),
+  amount: z.coerce.number().min(0),
   date: z.string().min(1, "Date required"),
+  paymentStatus: z.string().default("Pending"),
+  notes: z.string().optional(),
 });
 
+const editReceiptSchema = z.object({
+  paymentStatus: z.string().min(1),
+  notes: z.string().optional(),
+});
+
+const SERVICES = [
+  "Laundry", "Carpet Cleaning", "Fumigation", "Sofa/Upholstery Cleaning",
+  "Deep Cleaning", "Car Wash", "Duvet Cleaning", "Curtain Cleaning",
+  "Mattress Cleaning", "Office Cleaning", "Post-Renovation Cleaning",
+  "General Cleaning", "Other",
+];
+const STATUSES = ["Paid", "Pending", "Partial"];
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    Paid: "bg-green-100 text-green-800 border-green-200",
+    Pending: "bg-red-100 text-red-800 border-red-200",
+    Partial: "bg-orange-100 text-orange-800 border-orange-200",
+  };
+  const icons: Record<string, React.ReactNode> = {
+    Paid: <CheckCircle className="h-3 w-3 mr-1" />,
+    Pending: <Clock className="h-3 w-3 mr-1" />,
+    Partial: <AlertCircle className="h-3 w-3 mr-1" />,
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${colors[status] ?? "bg-gray-100 text-gray-700 border-gray-200"}`}>
+      {icons[status]}
+      {status}
+    </span>
+  );
+}
+
+// ─── Summary Card ─────────────────────────────────────────────────────────────
+function SummaryCard({ title, count, amount, color, icon, showAmount }: {
+  title: string; count: number; amount: number; color: string; icon?: React.ReactNode; showAmount: boolean;
+}) {
+  return (
+    <Card className={`shadow-sm border-t-4 ${color}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</p>
+          {icon}
+        </div>
+        <p className="text-2xl font-bold">{count}</p>
+        {showAmount && (
+          <p className="text-sm text-gray-500 mt-0.5">{formatKES(amount)}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Receipt Preview Component ────────────────────────────────────────────────
+function ReceiptPreview({ receipt, isPrint = false }: { receipt: Partial<ReceiptRow> & { receiptNumber: string; paymentStatus: string }; isPrint?: boolean }) {
+  return (
+    <div className={`bg-white p-8 w-full max-w-sm mx-auto ${isPrint ? "" : "shadow-md rounded"}`}>
+      <div className="text-center mb-6">
+        <h2 className={`text-2xl font-extrabold tracking-tighter ${isPrint ? "text-black" : "text-[#29ABE2]"}`}>
+          GOLD STANDARD CLEANERS
+        </h2>
+        <p className={`text-xs font-bold tracking-widest uppercase mt-1 ${isPrint ? "text-black" : "text-[#F5C518]"}`}>
+          HOME CLEANING EXPERTS
+        </p>
+        <div className="mt-3 text-xs text-gray-500 space-y-0.5">
+          <p>0708 454 392 / 0768 442 229</p>
+          <p>Ngong Road, Nairobi</p>
+        </div>
+      </div>
+
+      <div className="border-t border-b border-dashed border-gray-300 py-4 mb-4 text-sm space-y-2">
+        <div className="flex justify-between">
+          <span className="text-gray-500">Receipt No:</span>
+          <span className="font-mono font-semibold">{receipt.receiptNumber}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Date:</span>
+          <span>{receipt.date ? formatDate(receipt.date) : "—"}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Client:</span>
+          <span className="font-semibold text-right">{receipt.clientName || "—"}</span>
+        </div>
+      </div>
+
+      <div className="mb-6 space-y-3 text-sm">
+        <div>
+          <div className="text-xs text-gray-400 uppercase tracking-wide">Service</div>
+          <div className="font-medium">{receipt.serviceType || "—"}</div>
+        </div>
+        {receipt.description && (
+          <div>
+            <div className="text-xs text-gray-400 uppercase tracking-wide">Description</div>
+            <div>{receipt.description}</div>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-gray-800 pt-4 flex justify-between items-center">
+        <span className="font-bold text-lg">TOTAL</span>
+        <span className="text-2xl font-bold font-mono">{formatKES(receipt.amount ?? 0)}</span>
+      </div>
+
+      <div className="mt-3 flex justify-between items-center text-sm">
+        <span className="text-gray-500">Payment Status:</span>
+        {isPrint ? (
+          <span className="font-bold">{receipt.paymentStatus}</span>
+        ) : (
+          <StatusBadge status={receipt.paymentStatus} />
+        )}
+      </div>
+
+      {receipt.notes && (
+        <div className="mt-3 text-xs text-gray-500 bg-gray-50 rounded p-2 border border-gray-200">
+          <span className="font-medium">Note: </span>{receipt.notes}
+        </div>
+      )}
+
+      <div className="mt-6 text-center text-xs text-gray-400 border-t pt-4">
+        <p className="font-medium">Gold Standard Cleaners</p>
+        <p className="italic mt-0.5">Thank you for your business!</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Receipts() {
-  const queryClient = useQueryClient();
+  const { isDirector } = useAuth();
   const { toast } = useToast();
-  const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
-  
-  const { data: receipts, isLoading: receiptsLoading } = useListReceipts();
-  const { data: jobs } = useListJobs({});
-  
-  const form = useForm<z.infer<typeof receiptSchema>>({
-    resolver: zodResolver(receiptSchema),
+  const queryClient = useQueryClient();
+  const [location] = useLocation();
+
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [viewReceipt, setViewReceipt] = useState<ReceiptRow | null>(null);
+  const [editReceipt, setEditReceipt] = useState<ReceiptRow | null>(null);
+
+  // Parse URL params for pre-fill (from Jobs page "Generate Receipt" button)
+  const rawSearch = location.includes("?") ? location.split("?")[1] : "";
+  const urlParams = new URLSearchParams(rawSearch);
+  const prefillClient = urlParams.get("client") ?? "";
+  const prefillService = urlParams.get("service") ?? "";
+  const prefillAmount = parseFloat(urlParams.get("amount") ?? "0");
+  const prefillDate = urlParams.get("date") ?? new Date().toISOString().split("T")[0];
+
+  // Forms
+  const createForm = useForm<z.infer<typeof createReceiptSchema>>({
+    resolver: zodResolver(createReceiptSchema),
     defaultValues: {
-      jobId: null,
-      clientName: "",
-      serviceType: "",
+      clientName: prefillClient,
+      serviceType: prefillService,
+      amount: prefillAmount,
+      date: prefillDate,
+      paymentStatus: "Pending",
       description: "",
-      amount: 0,
-      date: new Date().toISOString().split('T')[0],
-    }
+      notes: "",
+    },
   });
 
+  const editForm = useForm<z.infer<typeof editReceiptSchema>>({
+    resolver: zodResolver(editReceiptSchema),
+    defaultValues: { paymentStatus: "Pending", notes: "" },
+  });
+
+  // Open create dialog when URL has a prefill client name
+  useEffect(() => {
+    if (prefillClient) {
+      setCreateOpen(true);
+    }
+  }, []);
+
+  // Queries
+  const listKey = getListReceiptsQueryKey({
+    month,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    search: search || undefined,
+  });
+  const summaryKey = getGetReceiptsSummaryQueryKey({ month });
+
+  const { data: receipts, isLoading } = useListReceipts(
+    {
+      month,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      search: search || undefined,
+    },
+    { query: { queryKey: listKey } }
+  );
+
+  const { data: summary } = useGetReceiptsSummary(
+    { month },
+    { query: { queryKey: summaryKey } }
+  );
+
+  // Mutations
   const createReceipt = useCreateReceipt({
     mutation: {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getListReceiptsQueryKey() });
-        setSelectedReceipt(data);
-        form.reset({
-          jobId: null,
-          clientName: "",
-          serviceType: "",
-          description: "",
-          amount: 0,
-          date: new Date().toISOString().split('T')[0],
-        });
-        toast({ title: "Receipt generated" });
-      }
-    }
+        queryClient.invalidateQueries({ queryKey: summaryKey });
+        setCreateOpen(false);
+        createForm.reset({ clientName: "", serviceType: "", amount: 0, date: new Date().toISOString().split("T")[0], paymentStatus: "Pending", description: "", notes: "" });
+        setViewReceipt(data as ReceiptRow);
+        toast({ title: `Receipt ${(data as ReceiptRow).receiptNumber} generated` });
+      },
+    },
   });
 
-  function onSubmit(data: z.infer<typeof receiptSchema>) {
-    createReceipt.mutate({ data });
+  const updateReceipt = useUpdateReceipt({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListReceiptsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: summaryKey });
+        setEditReceipt(null);
+        toast({ title: "Receipt updated" });
+      },
+    },
+  });
+
+  const deleteReceipt = useDeleteReceipt({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListReceiptsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: summaryKey });
+        toast({ title: "Receipt deleted" });
+      },
+    },
+  });
+
+  function openEdit(r: ReceiptRow) {
+    editForm.reset({ paymentStatus: r.paymentStatus, notes: r.notes ?? "" });
+    setEditReceipt(r);
   }
 
-  const handleJobSelect = (jobIdStr: string) => {
-    if (jobIdStr === "manual") {
-      form.setValue("jobId", null);
-      return;
-    }
-    
-    const jobId = parseInt(jobIdStr, 10);
-    const job = jobs?.find(j => j.id === jobId);
-    if (job) {
-      form.setValue("jobId", job.id);
-      form.setValue("clientName", job.clientName);
-      form.setValue("serviceType", job.serviceType);
-      form.setValue("description", job.description || "");
-      form.setValue("amount", job.amount);
-      form.setValue("date", job.date.split('T')[0]);
-    }
-  };
+  const livePreview = createForm.watch();
 
-  const printReceipt = (receipt: any) => {
-    setSelectedReceipt(receipt);
-    setTimeout(() => {
-      window.print();
-    }, 100);
-  };
-
-  const previewData = {
-    ...form.watch(),
-    receiptNumber: selectedReceipt?.receiptNumber || "GSC-RCT-PREVIEW",
-    date: form.watch("date") || new Date().toISOString().split('T')[0],
-  };
+  const totalAmount = (summary?.amountPaid ?? 0) + (summary?.amountPending ?? 0) + (summary?.amountPartial ?? 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between no-print">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight text-primary">Receipts</h1>
-      </div>
+    <>
+      {/* Print-only area — only receipt is shown when printing */}
+      {viewReceipt && (
+        <div className="print-only">
+          <ReceiptPreview receipt={viewReceipt} isPrint />
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 no-print">
-        <Card className="shadow-sm border-t-4 border-t-primary">
-          <CardContent className="p-6">
-            <h2 className="text-lg font-bold mb-4">Generate Receipt</h2>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Auto-fill from Job</label>
-              <Select onValueChange={handleJobSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a job or enter manually..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual Entry</SelectItem>
-                  {jobs?.slice(0, 50).map(j => (
-                    <SelectItem key={j.id} value={j.id.toString()}>
-                      {formatDate(j.date)} - {j.clientName} ({j.serviceType})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="date" render={({ field }) => (
-                    <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
-                  )} />
-                  <FormField control={form.control} name="amount" render={({ field }) => (
-                    <FormItem><FormLabel>Amount (KES)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
-                  )} />
-                </div>
-                <FormField control={form.control} name="clientName" render={({ field }) => (
-                  <FormItem><FormLabel>Client Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
-                )} />
-                <FormField control={form.control} name="serviceType" render={({ field }) => (
-                  <FormItem><FormLabel>Service Type</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
-                )} />
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
-                )} />
-                <Button type="submit" disabled={createReceipt.isPending} className="w-full bg-secondary text-black hover:bg-secondary/90 mt-4">
-                  {createReceipt.isPending ? <Spinner className="mr-2" /> : null} Generate Receipt
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        {/* Live Preview */}
-        <div className="bg-gray-100 p-8 rounded-lg flex items-center justify-center border border-gray-200">
-          <div className="bg-white p-8 w-full max-w-sm shadow-lg print:shadow-none print:p-0 print:m-0" id="receipt-preview">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-primary tracking-tighter">GOLD STANDARD</h2>
-              <h2 className="text-xl font-bold text-primary tracking-tighter mb-1">CLEANERS</h2>
-              <p className="text-xs font-bold text-secondary tracking-widest uppercase">Home Cleaning Experts</p>
-              <div className="mt-4 text-xs text-gray-600 space-y-1">
-                <p>Ngong Road, Nairobi</p>
-                <p>Tel: +254 700 000 000</p>
-                <p>Email: info@goldstandard.co.ke</p>
-              </div>
-            </div>
-            
-            <div className="border-t border-b border-dashed border-gray-300 py-4 mb-4 text-sm space-y-2">
-              <div className="flex justify-between"><span className="text-gray-500">Receipt No:</span><span className="font-mono font-medium">{previewData.receiptNumber}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Date:</span><span>{formatDate(previewData.date)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Client:</span><span className="font-medium text-right">{previewData.clientName || "—"}</span></div>
-            </div>
-            
-            <div className="mb-6 space-y-3">
-              <div>
-                <div className="text-xs text-gray-500">Service</div>
-                <div className="font-medium">{previewData.serviceType || "—"}</div>
-              </div>
-              {previewData.description && (
-                <div>
-                  <div className="text-xs text-gray-500">Description</div>
-                  <div className="text-sm">{previewData.description}</div>
-                </div>
-              )}
-            </div>
-            
-            <div className="border-t border-gray-800 pt-4 flex justify-between items-center mt-auto">
-              <span className="font-bold">TOTAL</span>
-              <span className="text-xl font-bold font-mono">{formatKES(previewData.amount || 0)}</span>
-            </div>
-            
-            <div className="text-center mt-8 text-xs text-gray-400 italic">
-              Thank you for your business!
-            </div>
+      <div className="space-y-6 no-print">
+        {/* Page Header */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <ReceiptText className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Receipts</h1>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="w-44 bg-white"
+            />
+            <Button
+              className="bg-secondary text-black hover:bg-secondary/90 gap-2"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> New Receipt
+            </Button>
           </div>
         </div>
-      </div>
 
-      <div className="print-only fixed inset-0 bg-white z-[100] flex justify-center p-8">
-        <div className="w-full max-w-sm">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-black tracking-tighter">GOLD STANDARD</h2>
-              <h2 className="text-xl font-bold text-black tracking-tighter mb-1">CLEANERS</h2>
-              <p className="text-xs font-bold text-black tracking-widest uppercase">Home Cleaning Experts</p>
-              <div className="mt-4 text-xs text-black space-y-1">
-                <p>Ngong Road, Nairobi</p>
-                <p>Tel: +254 700 000 000</p>
-                <p>Email: info@goldstandard.co.ke</p>
-              </div>
-            </div>
-            
-            <div className="border-t border-b border-dashed border-black py-4 mb-4 text-sm space-y-2">
-              <div className="flex justify-between"><span>Receipt No:</span><span className="font-mono font-medium">{selectedReceipt?.receiptNumber}</span></div>
-              <div className="flex justify-between"><span>Date:</span><span>{selectedReceipt ? formatDate(selectedReceipt.date) : ""}</span></div>
-              <div className="flex justify-between"><span>Client:</span><span className="font-medium text-right">{selectedReceipt?.clientName}</span></div>
-            </div>
-            
-            <div className="mb-6 space-y-3">
-              <div>
-                <div className="text-xs">Service</div>
-                <div className="font-medium">{selectedReceipt?.serviceType}</div>
-              </div>
-              {selectedReceipt?.description && (
-                <div>
-                  <div className="text-xs">Description</div>
-                  <div className="text-sm">{selectedReceipt?.description}</div>
-                </div>
-              )}
-            </div>
-            
-            <div className="border-t border-black pt-4 flex justify-between items-center mt-auto">
-              <span className="font-bold">TOTAL</span>
-              <span className="text-xl font-bold font-mono">{formatKES(selectedReceipt?.amount || 0)}</span>
-            </div>
-            
-            <div className="text-center mt-8 text-xs italic">
-              Thank you for your business!
-            </div>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryCard
+            title="Total This Month"
+            count={summary?.total ?? 0}
+            amount={totalAmount}
+            color="border-t-primary"
+            showAmount={isDirector}
+          />
+          <SummaryCard
+            title="Paid"
+            count={summary?.totalPaid ?? 0}
+            amount={summary?.amountPaid ?? 0}
+            color="border-t-green-500"
+            icon={<CheckCircle className="h-4 w-4 text-green-500" />}
+            showAmount={isDirector}
+          />
+          <SummaryCard
+            title="Pending"
+            count={summary?.totalPending ?? 0}
+            amount={summary?.amountPending ?? 0}
+            color="border-t-red-500"
+            icon={<Clock className="h-4 w-4 text-red-500" />}
+            showAmount={isDirector}
+          />
+          <SummaryCard
+            title="Partial"
+            count={summary?.totalPartial ?? 0}
+            amount={summary?.amountPartial ?? 0}
+            color="border-t-orange-500"
+            icon={<AlertCircle className="h-4 w-4 text-orange-500" />}
+            showAmount={isDirector}
+          />
         </div>
-      </div>
 
-      <Card className="shadow-sm no-print">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-black">
-              <TableRow className="hover:bg-black">
-                <TableHead className="text-white">Receipt #</TableHead>
-                <TableHead className="text-white">Date</TableHead>
-                <TableHead className="text-white">Client</TableHead>
-                <TableHead className="text-white">Service</TableHead>
-                <TableHead className="text-white text-right">Amount</TableHead>
-                <TableHead className="text-white text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {receiptsLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center h-24"><Spinner /></TableCell></TableRow>
-              ) : receipts?.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center h-24 text-gray-500">No receipts generated</TableCell></TableRow>
-              ) : (
-                receipts?.map(receipt => (
-                  <TableRow key={receipt.id}>
-                    <TableCell className="font-mono text-xs">{receipt.receiptNumber}</TableCell>
-                    <TableCell>{formatDate(receipt.date || receipt.createdAt)}</TableCell>
-                    <TableCell className="font-medium">{receipt.clientName}</TableCell>
-                    <TableCell>{receipt.serviceType}</TableCell>
-                    <TableCell className="text-right font-mono font-medium">{formatKES(receipt.amount)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => printReceipt(receipt)}>
-                        <Printer className="h-4 w-4 text-primary" />
-                      </Button>
+        {/* Filters + Table */}
+        <Card className="shadow-sm border-t-4 border-t-primary overflow-hidden">
+          <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search client or receipt #..."
+                className="pl-9 bg-white"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-44 bg-white">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-black">
+                <TableRow className="hover:bg-black">
+                  <TableHead className="text-white">Receipt #</TableHead>
+                  <TableHead className="text-white">Date</TableHead>
+                  <TableHead className="text-white">Client</TableHead>
+                  <TableHead className="text-white">Service</TableHead>
+                  <TableHead className="text-white text-right">Amount</TableHead>
+                  <TableHead className="text-white">Status</TableHead>
+                  <TableHead className="text-white">By</TableHead>
+                  <TableHead className="text-white text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center h-32">
+                      <Spinner />
                     </TableCell>
                   </TableRow>
-                ))
+                ) : !receipts?.length ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center h-32 text-gray-500">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p>No receipts found</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  (receipts as ReceiptRow[]).map((r) => (
+                    <TableRow key={r.id} className="hover:bg-gray-50">
+                      <TableCell className="font-mono text-xs text-gray-600 whitespace-nowrap">{r.receiptNumber}</TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">{formatDate(r.date)}</TableCell>
+                      <TableCell className="font-medium">{r.clientName}</TableCell>
+                      <TableCell className="text-sm text-gray-600">{r.serviceType}</TableCell>
+                      <TableCell className="text-right font-mono font-semibold whitespace-nowrap">{formatKES(r.amount)}</TableCell>
+                      <TableCell><StatusBadge status={r.paymentStatus} /></TableCell>
+                      <TableCell className="text-xs text-gray-400">{r.createdBy ?? "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost" size="icon" className="h-7 w-7" title="View receipt"
+                            onClick={() => setViewReceipt(r)}
+                          >
+                            <Eye className="h-3.5 w-3.5 text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon" className="h-7 w-7" title="Edit status / notes"
+                            onClick={() => openEdit(r)}
+                          >
+                            <Pencil className="h-3.5 w-3.5 text-blue-500" />
+                          </Button>
+                          {isDirector && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" title="Delete">
+                                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete {r.receiptNumber}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Receipt for <strong>{r.clientName}</strong> ({formatKES(r.amount)}) will be permanently removed.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-600 hover:bg-red-700"
+                                    onClick={() => deleteReceipt.mutate({ id: r.id })}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Create Receipt Dialog ────────────────────────────────────────── */}
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreateOpen(false);
+            createForm.reset({ clientName: "", serviceType: "", amount: 0, date: new Date().toISOString().split("T")[0], paymentStatus: "Pending", description: "", notes: "" });
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ReceiptText className="h-5 w-5 text-primary" />
+              Generate New Receipt
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            {/* Form */}
+            <div>
+              <Form {...createForm}>
+                <form
+                  onSubmit={createForm.handleSubmit((data) => createReceipt.mutate({ data }))}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField control={createForm.control} name="date" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl><Input type="date" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={createForm.control} name="amount" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount (KES)</FormLabel>
+                        <FormControl><Input type="number" min="0" step="0.01" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+
+                  <FormField control={createForm.control} name="clientName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client Name</FormLabel>
+                      <FormControl><Input placeholder="Client name..." {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={createForm.control} name="serviceType" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Service</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select service..." /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={createForm.control} name="description" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (optional)</FormLabel>
+                      <FormControl><Input placeholder="Any extra details..." {...field} /></FormControl>
+                    </FormItem>
+                  )} />
+
+                  <FormField control={createForm.control} name="paymentStatus" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payment Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+
+                  <FormField control={createForm.control} name="notes" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder='e.g. "Paid via Mpesa" or "Balance of KES 500 remaining"'
+                          rows={2}
+                          {...field}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )} />
+
+                  <Button
+                    type="submit"
+                    disabled={createReceipt.isPending}
+                    className="w-full bg-secondary text-black hover:bg-secondary/90"
+                  >
+                    {createReceipt.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                    Save Receipt
+                  </Button>
+                </form>
+              </Form>
+            </div>
+
+            {/* Live Preview */}
+            <div className="bg-gray-100 rounded-lg p-4 flex items-start justify-center min-h-[400px]">
+              <ReceiptPreview
+                receipt={{
+                  id: 0,
+                  receiptNumber: "GSC-RCT-???",
+                  clientName: livePreview.clientName,
+                  serviceType: livePreview.serviceType,
+                  description: livePreview.description,
+                  amount: livePreview.amount ?? 0,
+                  date: livePreview.date,
+                  paymentStatus: livePreview.paymentStatus || "Pending",
+                  notes: livePreview.notes,
+                  createdAt: new Date().toISOString(),
+                }}
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── View/Print Receipt Dialog ────────────────────────────────────── */}
+      <Dialog open={!!viewReceipt} onOpenChange={(open) => !open && setViewReceipt(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ReceiptText className="h-5 w-5 text-primary" />
+              {viewReceipt?.receiptNumber}
+            </DialogTitle>
+          </DialogHeader>
+          {viewReceipt && <ReceiptPreview receipt={viewReceipt} />}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setViewReceipt(null)}>Close</Button>
+            <Button className="bg-primary text-white gap-2" onClick={() => window.print()}>
+              <Download className="h-4 w-4" /> Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Receipt Dialog ──────────────────────────────────────────── */}
+      <Dialog open={!!editReceipt} onOpenChange={(open) => !open && setEditReceipt(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit {editReceipt?.receiptNumber}</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-gray-500 mb-2">
+            {editReceipt?.clientName} — {formatKES(editReceipt?.amount ?? 0)}
+          </div>
+          <Form {...editForm}>
+            <form
+              onSubmit={editForm.handleSubmit((data) =>
+                updateReceipt.mutate({ id: editReceipt!.id, data })
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+              className="space-y-4"
+            >
+              <FormField control={editForm.control} name="paymentStatus" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+
+              <FormField control={editForm.control} name="notes" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Add a note..." rows={3} {...field} />
+                  </FormControl>
+                </FormItem>
+              )} />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditReceipt(null)}>Cancel</Button>
+                <Button type="submit" disabled={updateReceipt.isPending} className="bg-primary text-white">
+                  {updateReceipt.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -39,6 +39,7 @@ import type {
   GetDashboardStatsParams,
   GetExpensesMonthlySummaryParams,
   GetMonthDrillParams,
+  GetReceiptsSummaryParams,
   GetRevenueByServiceParams,
   GetTopClientsParams,
   HealthStatus,
@@ -51,6 +52,7 @@ import type {
   ListClientsParams,
   ListExpensesParams,
   ListJobsParams,
+  ListReceiptsParams,
   LoginInput,
   MonthDrill,
   MonthlyTrend,
@@ -58,6 +60,8 @@ import type {
   PasswordUpdate,
   Receipt,
   ReceiptInput,
+  ReceiptUpdate,
+  ReceiptsSummary,
   ServiceRevenue,
   Settings,
   SettingsUpdate,
@@ -2127,20 +2131,27 @@ export const useDeleteClient = <TError = ErrorType<unknown>,
       return useMutation(getDeleteClientMutationOptions(options));
     }
 
-export const getListReceiptsUrl = () => {
+export const getListReceiptsUrl = (params?: ListReceiptsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/receipts`
+  return stringifiedParams.length > 0 ? `/api/receipts?${stringifiedParams}` : `/api/receipts`
 }
 
 /**
  * @summary List all receipts
  */
-export const listReceipts = async ( options?: RequestInit): Promise<Receipt[]> => {
+export const listReceipts = async (params?: ListReceiptsParams, options?: RequestInit): Promise<Receipt[]> => {
 
-  return customFetch<Receipt[]>(getListReceiptsUrl(),
+  return customFetch<Receipt[]>(getListReceiptsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2153,23 +2164,23 @@ export const listReceipts = async ( options?: RequestInit): Promise<Receipt[]> =
 
 
 
-export const getListReceiptsQueryKey = () => {
+export const getListReceiptsQueryKey = (params?: ListReceiptsParams,) => {
     return [
-    `/api/receipts`
+    `/api/receipts`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListReceiptsQueryOptions = <TData = Awaited<ReturnType<typeof listReceipts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReceipts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListReceiptsQueryOptions = <TData = Awaited<ReturnType<typeof listReceipts>>, TError = ErrorType<unknown>>(params?: ListReceiptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReceipts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListReceiptsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListReceiptsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReceipts>>> = ({ signal }) => listReceipts({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReceipts>>> = ({ signal }) => listReceipts(params, { signal, ...requestOptions });
 
 
 
@@ -2187,11 +2198,11 @@ export type ListReceiptsQueryError = ErrorType<unknown>
  */
 
 export function useListReceipts<TData = Awaited<ReturnType<typeof listReceipts>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReceipts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListReceiptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReceipts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListReceiptsQueryOptions(options)
+  const queryOptions = getListReceiptsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -2275,6 +2286,90 @@ export const useCreateReceipt = <TError = ErrorType<unknown>,
       return useMutation(getCreateReceiptMutationOptions(options));
     }
 
+export const getGetReceiptsSummaryUrl = (params?: GetReceiptsSummaryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/receipts/summary?${stringifiedParams}` : `/api/receipts/summary`
+}
+
+/**
+ * @summary Summary counts and totals for receipts this month
+ */
+export const getReceiptsSummary = async (params?: GetReceiptsSummaryParams, options?: RequestInit): Promise<ReceiptsSummary> => {
+
+  return customFetch<ReceiptsSummary>(getGetReceiptsSummaryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReceiptsSummaryQueryKey = (params?: GetReceiptsSummaryParams,) => {
+    return [
+    `/api/receipts/summary`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetReceiptsSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getReceiptsSummary>>, TError = ErrorType<unknown>>(params?: GetReceiptsSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReceiptsSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReceiptsSummaryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReceiptsSummary>>> = ({ signal }) => getReceiptsSummary(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReceiptsSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReceiptsSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getReceiptsSummary>>>
+export type GetReceiptsSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Summary counts and totals for receipts this month
+ */
+
+export function useGetReceiptsSummary<TData = Awaited<ReturnType<typeof getReceiptsSummary>>, TError = ErrorType<unknown>>(
+ params?: GetReceiptsSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReceiptsSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReceiptsSummaryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getGetReceiptUrl = (id: number,) => {
 
 
@@ -2351,6 +2446,78 @@ export function useGetReceipt<TData = Awaited<ReturnType<typeof getReceipt>>, TE
 
 
 
+
+export const getUpdateReceiptUrl = (id: number,) => {
+
+
+
+
+  return `/api/receipts/${id}`
+}
+
+/**
+ * @summary Update payment status or notes on a receipt
+ */
+export const updateReceipt = async (id: number,
+    receiptUpdate: ReceiptUpdate, options?: RequestInit): Promise<Receipt> => {
+
+  return customFetch<Receipt>(getUpdateReceiptUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      receiptUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateReceiptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReceipt>>, TError,{id: number;data: BodyType<ReceiptUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateReceipt>>, TError,{id: number;data: BodyType<ReceiptUpdate>}, TContext> => {
+
+const mutationKey = ['updateReceipt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateReceipt>>, {id: number;data: BodyType<ReceiptUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateReceipt(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof updateReceipt>>>
+    export type UpdateReceiptMutationBody = BodyType<ReceiptUpdate>
+    export type UpdateReceiptMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update payment status or notes on a receipt
+ */
+export const useUpdateReceipt = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReceipt>>, TError,{id: number;data: BodyType<ReceiptUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateReceipt>>,
+        TError,
+        {id: number;data: BodyType<ReceiptUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateReceiptMutationOptions(options));
+    }
 
 export const getDeleteReceiptUrl = (id: number,) => {
 

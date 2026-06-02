@@ -14,9 +14,10 @@ import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ReceiptText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 const SERVICES = ["Laundry", "Carpet Cleaning", "Fumigation", "Sofa/Upholstery", "Deep Cleaning", "Car Wash", "Duvet Cleaning", "Curtain Cleaning", "Mattress Cleaning", "Office Cleaning", "Post-Renovation Cleaning", "General Cleaning", "Other"];
 
@@ -35,6 +36,7 @@ export default function Jobs() {
   const { isDirector } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [editJob, setEditJob] = useState<{ id: number } & JobFormData | null>(null);
   const { data: jobs, isLoading } = useListJobs({ month });
@@ -167,13 +169,14 @@ export default function Jobs() {
                 <TableHead className="text-white">Location</TableHead>
                 {isDirector && <TableHead className="text-white text-center">By</TableHead>}
                 {isDirector && <TableHead className="text-white text-right">Actions</TableHead>}
+                <TableHead className="text-white text-center">Receipt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={isDirector ? 9 : 3} className="text-center h-24"><Spinner /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={isDirector ? 10 : 5} className="text-center h-24"><Spinner /></TableCell></TableRow>
               ) : jobs?.length === 0 ? (
-                <TableRow><TableCell colSpan={isDirector ? 9 : 3} className="text-center h-24 text-gray-500">No jobs recorded for this month</TableCell></TableRow>
+                <TableRow><TableCell colSpan={isDirector ? 10 : 5} className="text-center h-24 text-gray-500">No jobs recorded for this month</TableCell></TableRow>
               ) : (
                 jobs?.map(job => (
                   <TableRow key={job.id}>
@@ -194,7 +197,7 @@ export default function Jobs() {
                     {isDirector && (
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(job)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(job)} title="Edit job">
                             <Pencil className="h-3.5 w-3.5 text-primary" />
                           </Button>
                           <AlertDialog>
@@ -217,6 +220,26 @@ export default function Jobs() {
                         </div>
                       </TableCell>
                     )}
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Generate receipt"
+                        onClick={() => {
+                          const params = new URLSearchParams({
+                            client: job.clientName,
+                            service: job.serviceType,
+                            amount: String(job.amount),
+                            date: job.date.split("T")[0],
+                            jobId: String(job.id),
+                          });
+                          navigate(`/receipts?${params.toString()}`);
+                        }}
+                      >
+                        <ReceiptText className="h-3.5 w-3.5 text-[#F5C518]" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}

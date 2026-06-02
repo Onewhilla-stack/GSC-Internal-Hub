@@ -17,5 +17,14 @@ export interface Receipt {
   description?: string | null;
   amount: number;
   date?: string;
+  paymentStatus: string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  createdBy?: string | null;
+  /** @nullable */
+  lastEditedBy?: string | null;
+  /** @nullable */
+  lastEditedAt?: string | null;
   createdAt: string;
 }

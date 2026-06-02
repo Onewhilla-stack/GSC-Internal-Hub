@@ -11,6 +11,11 @@ export const receiptsTable = pgTable("receipts", {
   description: text("description"),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   date: text("date").notNull(),
+  paymentStatus: text("payment_status").notNull().default("Pending"),
+  notes: text("notes"),
+  createdBy: text("created_by"),
+  lastEditedBy: text("last_edited_by"),
+  lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

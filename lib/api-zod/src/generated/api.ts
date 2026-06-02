@@ -477,6 +477,13 @@ export const DeleteClientParams = zod.object({
 /**
  * @summary List all receipts
  */
+export const ListReceiptsQueryParams = zod.object({
+  "month": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional(),
+  "search": zod.coerce.string().optional(),
+  "serviceType": zod.coerce.string().optional()
+})
+
 export const ListReceiptsResponseItem = zod.object({
   "id": zod.number(),
   "receiptNumber": zod.string(),
@@ -486,6 +493,11 @@ export const ListReceiptsResponseItem = zod.object({
   "description": zod.string().nullish(),
   "amount": zod.number(),
   "date": zod.string().optional(),
+  "paymentStatus": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "lastEditedBy": zod.string().nullish(),
+  "lastEditedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListReceiptsResponse = zod.array(ListReceiptsResponseItem)
@@ -500,7 +512,27 @@ export const CreateReceiptBody = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().optional(),
   "amount": zod.number(),
-  "date": zod.string()
+  "date": zod.string(),
+  "paymentStatus": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+
+/**
+ * @summary Summary counts and totals for receipts this month
+ */
+export const GetReceiptsSummaryQueryParams = zod.object({
+  "month": zod.coerce.string().optional()
+})
+
+export const GetReceiptsSummaryResponse = zod.object({
+  "total": zod.number(),
+  "totalPaid": zod.number(),
+  "totalPending": zod.number(),
+  "totalPartial": zod.number(),
+  "amountPaid": zod.number(),
+  "amountPending": zod.number(),
+  "amountPartial": zod.number()
 })
 
 
@@ -520,6 +552,41 @@ export const GetReceiptResponse = zod.object({
   "description": zod.string().nullish(),
   "amount": zod.number(),
   "date": zod.string().optional(),
+  "paymentStatus": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "lastEditedBy": zod.string().nullish(),
+  "lastEditedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update payment status or notes on a receipt
+ */
+export const UpdateReceiptParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateReceiptBody = zod.object({
+  "paymentStatus": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+export const UpdateReceiptResponse = zod.object({
+  "id": zod.number(),
+  "receiptNumber": zod.string(),
+  "jobId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number(),
+  "date": zod.string().optional(),
+  "paymentStatus": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "lastEditedBy": zod.string().nullish(),
+  "lastEditedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 

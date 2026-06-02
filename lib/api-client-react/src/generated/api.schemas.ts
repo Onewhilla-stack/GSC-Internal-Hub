@@ -242,6 +242,15 @@ export interface Receipt {
   description?: string | null;
   amount: number;
   date?: string;
+  paymentStatus: string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  createdBy?: string | null;
+  /** @nullable */
+  lastEditedBy?: string | null;
+  /** @nullable */
+  lastEditedAt?: string | null;
   createdAt: string;
 }
 
@@ -253,6 +262,23 @@ export interface ReceiptInput {
   description?: string;
   amount: number;
   date: string;
+  paymentStatus?: string;
+  notes?: string;
+}
+
+export interface ReceiptUpdate {
+  paymentStatus?: string;
+  notes?: string;
+}
+
+export interface ReceiptsSummary {
+  total: number;
+  totalPaid: number;
+  totalPending: number;
+  totalPartial: number;
+  amountPaid: number;
+  amountPending: number;
+  amountPartial: number;
 }
 
 export interface PLMonth {
@@ -356,6 +382,17 @@ month: string;
 export type ListClientsParams = {
 search?: string;
 status?: string;
+};
+
+export type ListReceiptsParams = {
+month?: string;
+status?: string;
+search?: string;
+serviceType?: string;
+};
+
+export type GetReceiptsSummaryParams = {
+month?: string;
 };
 
 export type GetMonthDrillParams = {

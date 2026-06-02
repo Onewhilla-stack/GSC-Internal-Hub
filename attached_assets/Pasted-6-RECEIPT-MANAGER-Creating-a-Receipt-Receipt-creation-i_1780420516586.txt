@@ -1,0 +1,64 @@
+6. RECEIPT MANAGER
+Creating a Receipt:
+
+Receipt creation is triggered from the Job Tracker — each job row has a "Generate Receipt" button
+Clicking it opens a receipt form pre-filled with: Client Name, Date, Service Type, Description, Amount (KES)
+Receipt Number auto-generated in format GSC-RCT-001, incrementing automatically
+Payment Status field: Paid / Pending / Partial
+Notes field — optional e.g. "paid via Mpesa", "balance of KES 500 remaining"
+Preview the receipt before saving
+Save Receipt button — saves it permanently to the receipts database
+After saving, option to Download as PDF immediately or do it later
+
+Receipt List (Main Receipts Page):
+
+Full table of all saved receipts showing: Receipt No., Date, Client Name, Service, Amount, Payment Status (colour coded — green for Paid, orange for Partial, red for Pending), Created By, Actions
+Search by client name or receipt number
+Filter by: Month, Payment Status, Service Type
+Each row has three action buttons:
+
+View — opens the full receipt preview exactly as it looked when created
+Download PDF — downloads that receipt as a clean PDF at any time
+Edit — allows updating Payment Status or Notes only, not the core receipt details
+Delete — Directors only
+
+
+
+Receipt Preview:
+
+When you click View on any receipt it opens a clean full preview showing:
+
+GOLD STANDARD CLEANERS in sky blue bold at top
+HOME CLEANING EXPERTS in golden yellow
+Phone: 0708454392 / 0768442229
+Ngong Road, Nairobi
+Horizontal divider
+Receipt No. and Date right aligned
+Client Name
+Service Type and Description
+Amount in KES bold and large
+Payment Status badge — green Paid, orange Partial, red Pending
+Notes if any
+Footer: Gold Standard Cleaners — Ngong Road, Nairobi
+
+
+Download PDF button always visible on the preview
+Back to Receipts List button
+
+Receipt PDF Layout:
+
+Clean, minimal, professional
+No unnecessary decoration — this is a working business document
+GSC name and contact at top
+All receipt details clearly laid out
+Payment status clearly shown
+Auto-numbered pages if multiple pages needed
+
+Receipts Dashboard Summary (top of Receipts page):
+
+Small summary cards: Total Receipts This Month, Total Paid, Total Pending, Total Partial
+Directors see amounts in KES — Workers see counts only, no money totals
+
+Database:
+
+receipts table: id, receipt_number, job_id, client_id, client_name, service_type, description, amount, payment_status, notes, created_by, created_at, last_edited_by, last_edited_at

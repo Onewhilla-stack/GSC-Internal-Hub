@@ -540,6 +540,23 @@ paths:
       operationId: listReceipts
       tags: [receipts]
       summary: List all receipts
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: serviceType
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: List of receipts
@@ -567,6 +584,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/Receipt"
 
+  /receipts/summary:
+    get:
+      operationId: getReceiptsSummary
+      tags: [receipts]
+      summary: Summary counts and totals for receipts this month
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptsSummary"
+
   /receipts/{id}:
     get:
       operationId: getReceipt
@@ -581,6 +616,29 @@ paths:
       responses:
         "200":
           description: Receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+    patch:
+      operationId: updateReceipt
+      tags: [receipts]
+      summary: Update payment status or notes on a receipt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiptUpdate"
+      responses:
+        "200":
+          description: Updated receipt
           content:
             application/json:
               schema:
@@ -1051,7 +1109,7 @@ components:
     # ── Receipts ──
     Receipt:
       type: object
-      required: [id, receiptNumber, clientName, serviceType, amount, createdAt]
+      required: [id, receiptNumber, clientName, serviceType, amount, paymentStatus, createdAt]
       properties:
         id: { type: integer }
         receiptNumber: { type: string }
@@ -1061,6 +1119,11 @@ components:
         description: { type: ["string", "null"] }
         amount: { type: number }
         date: { type: string }
+        paymentStatus: { type: string }
+        notes: { type: ["string", "null"] }
+        createdBy: { type: ["string", "null"] }
+        lastEditedBy: { type: ["string", "null"] }
+        lastEditedAt: { type: ["string", "null"] }
         createdAt: { type: string }
 
     ReceiptInput:
@@ -1073,6 +1136,26 @@ components:
         description: { type: string }
         amount: { type: number }
         date: { type: string }
+        paymentStatus: { type: string }
+        notes: { type: string }
+
+    ReceiptUpdate:
+      type: object
+      properties:
+        paymentStatus: { type: string }
+        notes: { type: string }
+
+    ReceiptsSummary:
+      type: object
+      required: [total, totalPaid, totalPending, totalPartial, amountPaid, amountPending, amountPartial]
+      properties:
+        total: { type: integer }
+        totalPaid: { type: integer }
+        totalPending: { type: integer }
+        totalPartial: { type: integer }
+        amountPaid: { type: number }
+        amountPending: { type: number }
+        amountPartial: { type: number }
 
     # ── Analytics ──
     PLMonth:
