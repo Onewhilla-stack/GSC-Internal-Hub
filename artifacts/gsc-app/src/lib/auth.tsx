@@ -1,21 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
-
-interface AuthUser {
-  id: number;
-  username: string;
-  role: string;
-}
-
-interface AuthContextType {
-  user: AuthUser | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  isDirector: boolean;
-  isWorker: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext, AuthContextType, AuthUser } from "./auth-context";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: queryLoading, isError } = useGetMe({
