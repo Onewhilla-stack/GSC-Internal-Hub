@@ -39,6 +39,8 @@ export * from './job';
 export * from './jobImport';
 export * from './jobImportRow';
 export * from './jobInput';
+export * from './jobItem';
+export * from './jobItemInput';
 export * from './jobUpdate';
 export * from './keyStats';
 export * from './listClientsParams';

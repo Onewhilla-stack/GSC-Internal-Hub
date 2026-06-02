@@ -5,6 +5,7 @@
  * Gold Standard Cleaners internal management API
  * OpenAPI spec version: 0.1.0
  */
+import type { JobItemInput } from './jobItemInput';
 
 export interface JobUpdate {
   /** @nullable */
@@ -16,6 +17,9 @@ export interface JobUpdate {
   description?: string | null;
   /** @nullable */
   location?: string | null;
+  /** @minItems 1 */
+  items?: JobItemInput[];
+  /** @minimum 0 */
   amount?: number;
   teamMembers?: number;
   /** @nullable */

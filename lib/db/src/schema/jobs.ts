@@ -1,6 +1,12 @@
-import { pgTable, text, serial, timestamp, integer, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, numeric, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+export interface JobItem {
+  serviceType: string;
+  description?: string | null;
+  amount: number;
+}
 
 export const jobsTable = pgTable("jobs", {
   id: serial("id").primaryKey(),
@@ -10,6 +16,7 @@ export const jobsTable = pgTable("jobs", {
   serviceType: text("service_type").notNull(),
   description: text("description"),
   location: text("location"),
+  items: jsonb("items").$type<JobItem[]>(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   teamMembers: integer("team_members").notNull().default(1),
   wages: numeric("wages", { precision: 12, scale: 2 }).notNull(),

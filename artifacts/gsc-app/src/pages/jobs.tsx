@@ -7,14 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, ReceiptText, Upload } from "lucide-react";
+import { Pencil, Trash2, ReceiptText, Upload, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useDateRange } from "@/lib/date-range";
 import { DateRangePicker } from "@/components/date-range-picker";
@@ -36,13 +36,28 @@ const jobSchema = z.object({
 
 type JobFormData = z.infer<typeof jobSchema>;
 
+const editJobSchema = z.object({
+  date: z.string().min(1, "Date required"),
+  clientName: z.string().min(1, "Client name required"),
+  location: z.string().optional(),
+  teamMembers: z.coerce.number().min(1, "At least 1 member"),
+  serviceType: z.string().optional(),
+  amount: z.coerce.number().min(0).optional(),
+  items: z.array(z.object({
+    serviceType: z.string().min(1, "Service required"),
+    amount: z.coerce.number().min(0),
+  })).optional(),
+});
+
+type EditJobFormData = z.infer<typeof editJobSchema>;
+
 export default function Jobs() {
   const { isDirector } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { from, to } = useDateRange();
-  const [editJob, setEditJob] = useState<{ id: number } & JobFormData | null>(null);
+  const [editJob, setEditJob] = useState<{ id: number } | null>(null);
   const { data: jobs, isLoading } = useListJobs({ from, to });
   const jobsKey = getListJobsQueryKey({ from, to });
 
@@ -58,10 +73,13 @@ export default function Jobs() {
     }
   });
 
-  const editForm = useForm<JobFormData>({
-    resolver: zodResolver(jobSchema),
-    defaultValues: { date: "", clientName: "", serviceType: "", location: "", amount: 0, teamMembers: 1 },
+  const editForm = useForm<EditJobFormData>({
+    resolver: zodResolver(editJobSchema),
+    defaultValues: { date: "", clientName: "", serviceType: "", location: "", amount: 0, teamMembers: 1, items: [] },
   });
+  const editItemsArray = useFieldArray({ control: editForm.control, name: "items" });
+  const editItems = editForm.watch("items") ?? [];
+  const isMultiEdit = editItems.length > 0;
 
   const createJob = useCreateJob({
     mutation: {
@@ -160,6 +178,7 @@ export default function Jobs() {
   const netIncome = (amount || 0) - wages;
 
   function openEdit(job: typeof jobs extends (infer T)[] | undefined ? T : never) {
+    const jobItems = job!.items ?? [];
     editForm.reset({
       date: job!.date,
       clientName: job!.clientName,
@@ -167,8 +186,18 @@ export default function Jobs() {
       location: job!.location ?? "",
       amount: job!.amount,
       teamMembers: job!.teamMembers,
+      items: jobItems.map(it => ({ serviceType: it.serviceType, amount: it.amount })),
     });
-    setEditJob({ id: job!.id, date: job!.date, clientName: job!.clientName, serviceType: job!.serviceType, location: job!.location ?? "", amount: job!.amount, teamMembers: job!.teamMembers });
+    setEditJob({ id: job!.id });
+  }
+
+  function submitEdit(data: EditJobFormData) {
+    const { items, serviceType, amount, ...rest } = data;
+    if (items && items.length > 0) {
+      updateJob.mutate({ id: editJob!.id, data: { ...rest, items } });
+    } else {
+      updateJob.mutate({ id: editJob!.id, data: { ...rest, serviceType, amount } });
+    }
   }
 
   return (
@@ -254,7 +283,12 @@ export default function Jobs() {
                   <TableRow key={job.id}>
                     <TableCell>{formatDate(job.date)}</TableCell>
                     <TableCell className="font-medium">{job.clientName}</TableCell>
-                    <TableCell>{job.serviceType}</TableCell>
+                    <TableCell>
+                      {job.serviceType}
+                      {(job.items?.length ?? 0) > 1 && (
+                        <div className="text-xs text-gray-400">{job.items!.map(it => it.serviceType).join(", ")}</div>
+                      )}
+                    </TableCell>
                     {isDirector && <TableCell className="text-right font-mono">{formatKES(job.amount)}</TableCell>}
                     {isDirector && <TableCell className="text-right font-mono text-red-600">{formatKES(job.wages)}</TableCell>}
                     {isDirector && <TableCell className="text-right font-mono font-bold text-green-600">{formatKES(job.netIncome)}</TableCell>}
@@ -301,11 +335,15 @@ export default function Jobs() {
                         onClick={() => {
                           const params = new URLSearchParams({
                             client: job.clientName,
-                            service: job.serviceType,
-                            amount: String(job.amount),
                             date: job.date.split("T")[0],
                             jobId: String(job.id),
                           });
+                          if (job.items && job.items.length > 0) {
+                            params.set("items", JSON.stringify(job.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))));
+                          } else {
+                            params.set("service", job.serviceType);
+                            params.set("amount", String(job.amount));
+                          }
                           navigate(`/receipts?${params.toString()}`);
                         }}
                       >
@@ -325,7 +363,7 @@ export default function Jobs() {
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Job</DialogTitle></DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((data) => updateJob.mutate({ id: editJob!.id, data }))} className="space-y-4">
+            <form onSubmit={editForm.handleSubmit(submitEdit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={editForm.control} name="date" render={({ field }) => (
                   <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
@@ -333,24 +371,60 @@ export default function Jobs() {
                 <FormField control={editForm.control} name="clientName" render={({ field }) => (
                   <FormItem><FormLabel>Client</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                 )} />
-                <FormField control={editForm.control} name="serviceType" render={({ field }) => (
-                  <FormItem><FormLabel>Service</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>{SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
+                {!isMultiEdit && (
+                  <FormField control={editForm.control} name="serviceType" render={({ field }) => (
+                    <FormItem><FormLabel>Service</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>{SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                )}
                 <FormField control={editForm.control} name="location" render={({ field }) => (
                   <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                 )} />
                 <FormField control={editForm.control} name="teamMembers" render={({ field }) => (
                   <FormItem><FormLabel>Team</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl></FormItem>
                 )} />
-                <FormField control={editForm.control} name="amount" render={({ field }) => (
-                  <FormItem><FormLabel>Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
-                )} />
+                {!isMultiEdit && (
+                  <FormField control={editForm.control} name="amount" render={({ field }) => (
+                    <FormItem><FormLabel>Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
+                  )} />
+                )}
               </div>
+              {isMultiEdit && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">Services</span>
+                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => editItemsArray.append({ serviceType: "", amount: 0 })}>
+                      <Plus className="h-3.5 w-3.5" /> Add service
+                    </Button>
+                  </div>
+                  {editItemsArray.fields.map((f, idx) => (
+                    <div key={f.id} className="flex items-end gap-3">
+                      <FormField control={editForm.control} name={`items.${idx}.serviceType`} render={({ field }) => (
+                        <FormItem className="flex-1"><FormLabel className="text-xs">Service</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select service..." /></SelectTrigger></FormControl>
+                            <SelectContent>{SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={editForm.control} name={`items.${idx}.amount`} render={({ field }) => (
+                        <FormItem className="w-36"><FormLabel className="text-xs">Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
+                      )} />
+                      <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" disabled={editItemsArray.fields.length === 1} onClick={() => editItemsArray.remove(idx)} title="Remove service">
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex justify-end text-sm font-mono font-semibold text-primary">
+                    Total: {formatKES(editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0))}
+                  </div>
+                </div>
+              )}
               <DialogFooter>
                 <Button variant="outline" type="button" onClick={() => setEditJob(null)}>Cancel</Button>
                 <Button type="submit" disabled={updateJob.isPending} className="bg-primary text-white">

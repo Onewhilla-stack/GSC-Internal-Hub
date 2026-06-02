@@ -25,10 +25,19 @@ export default function Analytics() {
   const { data: monthDrill } = useGetMonthDrill({ month: drillMonth }, { query: { enabled: !!drillMonth, queryKey: getGetMonthDrillQueryKey({ month: drillMonth }) } });
 
   // Drill-down charts derive from the selected month's data (not all-time).
+  // Multi-service visits are stored as one job row with an items[] breakdown, so
+  // we expand each line item to attribute revenue to the correct service rather
+  // than bucketing everything under the "Multiple Services" label.
   const serviceBreakdown = useMemo(() => {
     const map = new Map<string, number>();
     for (const j of monthDrill?.jobs ?? []) {
-      map.set(j.serviceType, (map.get(j.serviceType) ?? 0) + j.amount);
+      if (j.items && j.items.length > 0) {
+        for (const item of j.items) {
+          map.set(item.serviceType, (map.get(item.serviceType) ?? 0) + item.amount);
+        }
+      } else {
+        map.set(j.serviceType, (map.get(j.serviceType) ?? 0) + j.amount);
+      }
     }
     return Array.from(map, ([serviceType, revenue]) => ({ serviceType, revenue })).sort((a, b) => b.revenue - a.revenue);
   }, [monthDrill]);

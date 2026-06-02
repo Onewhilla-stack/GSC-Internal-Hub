@@ -1024,6 +1024,22 @@ components:
         jobCount: { type: integer }
 
     # ── Jobs ──
+    JobItem:
+      type: object
+      required: [serviceType, amount]
+      properties:
+        serviceType: { type: string }
+        description: { type: ["string", "null"] }
+        amount: { type: number }
+
+    JobItemInput:
+      type: object
+      required: [serviceType, amount]
+      properties:
+        serviceType: { type: string }
+        description: { type: string }
+        amount: { type: number, minimum: 0 }
+
     Job:
       type: object
       required: [id, date, clientName, serviceType, amount, teamMembers, wages, netIncome, createdAt]
@@ -1035,6 +1051,9 @@ components:
         serviceType: { type: string }
         description: { type: ["string", "null"] }
         location: { type: ["string", "null"] }
+        items:
+          type: ["array", "null"]
+          items: { $ref: "#/components/schemas/JobItem" }
         amount: { type: number }
         teamMembers: { type: integer }
         wages: { type: number }
@@ -1044,7 +1063,7 @@ components:
 
     JobInput:
       type: object
-      required: [date, clientName, serviceType, amount, teamMembers]
+      required: [date, clientName, teamMembers]
       properties:
         clientId: { type: ["integer", "null"] }
         date: { type: string }
@@ -1052,7 +1071,11 @@ components:
         serviceType: { type: string }
         description: { type: string }
         location: { type: string }
-        amount: { type: number }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/JobItemInput" }
+        amount: { type: number, minimum: 0 }
         teamMembers: { type: integer }
         notes: { type: string }
 
@@ -1065,7 +1088,11 @@ components:
         serviceType: { type: string }
         description: { type: ["string", "null"] }
         location: { type: ["string", "null"] }
-        amount: { type: number }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/JobItemInput" }
+        amount: { type: number, minimum: 0 }
         teamMembers: { type: integer }
         notes: { type: ["string", "null"] }
 

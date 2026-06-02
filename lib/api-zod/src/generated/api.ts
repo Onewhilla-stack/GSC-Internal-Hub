@@ -131,6 +131,11 @@ export const GetRecentJobsResponseItem = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})).nullish(),
   "amount": zod.number(),
   "teamMembers": zod.number(),
   "wages": zod.number(),
@@ -159,6 +164,11 @@ export const ListJobsResponseItem = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})).nullish(),
   "amount": zod.number(),
   "teamMembers": zod.number(),
   "wages": zod.number(),
@@ -172,14 +182,26 @@ export const ListJobsResponse = zod.array(ListJobsResponseItem)
 /**
  * @summary Log a new job
  */
+export const createJobBodyItemsItemAmountMin = 0;
+
+
+export const createJobBodyAmountMin = 0;
+
+
+
 export const CreateJobBody = zod.object({
   "clientId": zod.number().nullish(),
   "date": zod.string(),
   "clientName": zod.string(),
-  "serviceType": zod.string(),
+  "serviceType": zod.string().optional(),
   "description": zod.string().optional(),
   "location": zod.string().optional(),
-  "amount": zod.number(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().optional(),
+  "amount": zod.number().min(createJobBodyItemsItemAmountMin)
+})).min(1).optional(),
+  "amount": zod.number().min(createJobBodyAmountMin).optional(),
   "teamMembers": zod.number(),
   "notes": zod.string().optional()
 })
@@ -222,6 +244,11 @@ export const GetJobResponse = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})).nullish(),
   "amount": zod.number(),
   "teamMembers": zod.number(),
   "wages": zod.number(),
@@ -238,6 +265,13 @@ export const UpdateJobParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const updateJobBodyItemsItemAmountMin = 0;
+
+
+export const updateJobBodyAmountMin = 0;
+
+
+
 export const UpdateJobBody = zod.object({
   "clientId": zod.number().nullish(),
   "date": zod.string().optional(),
@@ -245,7 +279,12 @@ export const UpdateJobBody = zod.object({
   "serviceType": zod.string().optional(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
-  "amount": zod.number().optional(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().optional(),
+  "amount": zod.number().min(updateJobBodyItemsItemAmountMin)
+})).min(1).optional(),
+  "amount": zod.number().min(updateJobBodyAmountMin).optional(),
   "teamMembers": zod.number().optional(),
   "notes": zod.string().nullish()
 })
@@ -258,6 +297,11 @@ export const UpdateJobResponse = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})).nullish(),
   "amount": zod.number(),
   "teamMembers": zod.number(),
   "wages": zod.number(),
@@ -737,6 +781,11 @@ export const GetMonthDrillResponse = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})).nullish(),
   "amount": zod.number(),
   "teamMembers": zod.number(),
   "wages": zod.number(),
@@ -815,6 +864,11 @@ export const GetWorkerDashboardResponse = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})).nullish(),
   "amount": zod.number(),
   "teamMembers": zod.number(),
   "wages": zod.number(),

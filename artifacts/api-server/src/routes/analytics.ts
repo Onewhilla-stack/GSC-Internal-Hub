@@ -3,6 +3,7 @@ import { db, jobsTable, expensesTable } from "@workspace/db";
 import { sql, gte, lt, and, eq } from "drizzle-orm";
 import { GetMonthDrillQueryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { aggregateRevenueByService } from "../lib/service-breakdown";
 
 const router = Router();
 
@@ -63,12 +64,11 @@ router.get("/analytics/revenue-trend", requireAuth, async (req, res): Promise<vo
 router.get("/analytics/service-breakdown", requireAuth, async (req, res): Promise<void> => {
   const rows = await db.select({
     serviceType: jobsTable.serviceType,
-    revenue: sql<string>`SUM(${jobsTable.amount})`,
-  }).from(jobsTable)
-    .groupBy(jobsTable.serviceType)
-    .orderBy(sql`SUM(${jobsTable.amount}) DESC`);
+    amount: jobsTable.amount,
+    items: jobsTable.items,
+  }).from(jobsTable);
 
-  res.json(rows.map(r => ({ serviceType: r.serviceType, revenue: parseFloat(r.revenue) })));
+  res.json(aggregateRevenueByService(rows));
 });
 
 router.get("/analytics/expense-breakdown", requireAuth, async (req, res): Promise<void> => {

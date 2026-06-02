@@ -224,6 +224,31 @@ export default function Receipts() {
 
   // Forms
   const emptyItem = { serviceType: "", description: "", amount: 0 };
+
+  // A visit can pass multiple line items via an "items" JSON param; otherwise we
+  // fall back to a single service/amount prefill.
+  function parsePrefillItems(): { serviceType: string; description: string; amount: number }[] {
+    const raw = urlParams.get("items");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { serviceType?: string; description?: string; amount?: number }[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((it) => ({
+            serviceType: it.serviceType ?? "",
+            description: it.description ?? "",
+            amount: Number(it.amount) || 0,
+          }));
+        }
+      } catch {
+        // fall through to single-service / empty default
+      }
+    }
+    if (prefillService) {
+      return [{ serviceType: prefillService, description: "", amount: prefillAmount }];
+    }
+    return [{ ...emptyItem }];
+  }
+
   const createForm = useForm<z.infer<typeof createReceiptSchema>>({
     resolver: zodResolver(createReceiptSchema),
     defaultValues: {
@@ -231,7 +256,7 @@ export default function Receipts() {
       date: prefillDate,
       paymentStatus: "Pending",
       notes: "",
-      items: [prefillService ? { serviceType: prefillService, description: "", amount: prefillAmount } : { ...emptyItem }],
+      items: parsePrefillItems(),
     },
   });
 

@@ -3,6 +3,7 @@ import { db, jobsTable, expensesTable, clientsTable } from "@workspace/db";
 import { sql, and, gte, lt } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { resolveDateRange, type RangeQuery } from "../lib/date-range";
+import { aggregateRevenueByService } from "../lib/service-breakdown";
 
 const router = Router();
 
@@ -86,13 +87,12 @@ router.get("/dashboard/revenue-by-service", requireAuth, async (req, res): Promi
 
   const rows = await db.select({
     serviceType: jobsTable.serviceType,
-    revenue: sql<string>`SUM(${jobsTable.amount})`,
+    amount: jobsTable.amount,
+    items: jobsTable.items,
   }).from(jobsTable)
-    .where(and(gte(jobsTable.date, start), lt(jobsTable.date, end)))
-    .groupBy(jobsTable.serviceType)
-    .orderBy(sql`SUM(${jobsTable.amount}) DESC`);
+    .where(and(gte(jobsTable.date, start), lt(jobsTable.date, end)));
 
-  res.json(rows.map(r => ({ serviceType: r.serviceType, revenue: parseFloat(r.revenue) })));
+  res.json(aggregateRevenueByService(rows));
 });
 
 router.get("/dashboard/top-clients", requireAuth, async (req, res): Promise<void> => {

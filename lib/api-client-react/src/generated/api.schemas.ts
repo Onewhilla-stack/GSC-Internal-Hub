@@ -52,6 +52,20 @@ export interface TopClient {
   jobCount: number;
 }
 
+export interface JobItem {
+  serviceType: string;
+  /** @nullable */
+  description?: string | null;
+  amount: number;
+}
+
+export interface JobItemInput {
+  serviceType: string;
+  description?: string;
+  /** @minimum 0 */
+  amount: number;
+}
+
 export interface Job {
   id: number;
   /** @nullable */
@@ -63,6 +77,8 @@ export interface Job {
   description?: string | null;
   /** @nullable */
   location?: string | null;
+  /** @nullable */
+  items?: JobItem[] | null;
   amount: number;
   teamMembers: number;
   wages: number;
@@ -77,10 +93,13 @@ export interface JobInput {
   clientId?: number | null;
   date: string;
   clientName: string;
-  serviceType: string;
+  serviceType?: string;
   description?: string;
   location?: string;
-  amount: number;
+  /** @minItems 1 */
+  items?: JobItemInput[];
+  /** @minimum 0 */
+  amount?: number;
   teamMembers: number;
   notes?: string;
 }
@@ -95,6 +114,9 @@ export interface JobUpdate {
   description?: string | null;
   /** @nullable */
   location?: string | null;
+  /** @minItems 1 */
+  items?: JobItemInput[];
+  /** @minimum 0 */
   amount?: number;
   teamMembers?: number;
   /** @nullable */
