@@ -397,6 +397,28 @@ export const CreateClientBody = zod.object({
 
 
 /**
+ * @summary Import clients from CSV rows
+ */
+export const ImportClientsBody = zod.object({
+  "rows": zod.array(zod.object({
+  "clientCode": zod.string().optional(),
+  "name": zod.string(),
+  "status": zod.string(),
+  "phone": zod.string().optional(),
+  "email": zod.string().optional(),
+  "location": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "firstVisitDate": zod.string().optional()
+}))
+})
+
+export const ImportClientsResponse = zod.object({
+  "imported": zod.number(),
+  "errors": zod.number()
+})
+
+
+/**
  * @summary Get client profile with stats and transaction history
  */
 export const GetClientParams = zod.object({

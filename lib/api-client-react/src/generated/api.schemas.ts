@@ -188,6 +188,21 @@ export interface ClientInput {
   firstVisitDate?: string;
 }
 
+export interface ClientImportRow {
+  clientCode?: string;
+  name: string;
+  status: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+  notes?: string;
+  firstVisitDate?: string;
+}
+
+export interface ClientImport {
+  rows: ClientImportRow[];
+}
+
 export interface ClientUpdate {
   name?: string;
   /** @nullable */

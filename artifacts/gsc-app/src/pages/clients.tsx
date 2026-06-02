@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useListClients, useCreateClient, useUpdateClient, useDeleteClient, getListClientsQueryKey } from "@workspace/api-client-react";
+import { useState, useRef } from "react";
+import { useListClients, useCreateClient, useUpdateClient, useDeleteClient, useImportClients, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,9 +15,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Download, Plus, Search, Pencil, Trash2, Upload } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
+import Papa from "papaparse";
+import { parseDateToISO, normalizeStatus, findHeader, col, cell } from "@/lib/csv-import";
 
 const STATUSES = ["New", "Existing", "Referral"];
 
@@ -86,6 +88,63 @@ export default function Clients() {
     }
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importClients = useImportClients({
+    mutation: {
+      onSuccess: (res) => {
+        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+        toast({ title: `Imported ${res.imported} clients${res.errors ? ` (${res.errors} skipped)` : ""}` });
+      },
+      onError: () => toast({ title: "Import failed", variant: "destructive" }),
+    }
+  });
+
+  function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    Papa.parse<string[]>(file, {
+      skipEmptyLines: true,
+      complete: (result) => {
+        const data = result.data as string[][];
+        const header = findHeader(data, [/name/i]);
+        if (!header) {
+          toast({ title: "Couldn't find a header row with a Name column", variant: "destructive" });
+          return;
+        }
+        const { headerIndex, columns } = header;
+        const codeIdx = col(columns, ["client id", "id", "code"]);
+        const nameIdx = col(columns, ["client name", "name"]);
+        const phoneIdx = col(columns, ["phone", "contact"]);
+        const emailIdx = col(columns, ["email"]);
+        const locationIdx = col(columns, ["location", "address"]);
+        const statusIdx = col(columns, ["status"]);
+        const firstVisitIdx = col(columns, ["first visit", "first contact", "date"]);
+
+        const rows: Array<{ clientCode?: string; name: string; phone?: string; email?: string; location?: string; status: string; firstVisitDate?: string }> = [];
+        for (let i = headerIndex + 1; i < data.length; i++) {
+          const r = data[i];
+          const name = cell(r, nameIdx);
+          if (!name || /total/i.test(name)) continue;
+          rows.push({
+            clientCode: cell(r, codeIdx) || undefined,
+            name,
+            phone: cell(r, phoneIdx) || undefined,
+            email: cell(r, emailIdx) || undefined,
+            location: cell(r, locationIdx) || undefined,
+            status: normalizeStatus(cell(r, statusIdx)),
+            firstVisitDate: parseDateToISO(cell(r, firstVisitIdx)) ?? undefined,
+          });
+        }
+        if (rows.length === 0) {
+          toast({ title: "No valid client rows found in CSV", variant: "destructive" });
+          return;
+        }
+        importClients.mutate({ data: { rows } });
+      }
+    });
+    e.target.value = "";
+  }
+
   const exportCSV = () => {
     if (!clients) return;
     const headers = ["ID", "Name", "Phone", "Email", "Location", "Status", "First Visit", "Added By"];
@@ -116,9 +175,15 @@ export default function Clients() {
         <h1 className="text-3xl font-bold text-primary tracking-tight">Client Database</h1>
         <div className="flex items-center gap-2">
           {isDirector && (
-            <Button variant="outline" onClick={exportCSV} disabled={!clients?.length} className="gap-2">
-              <Download className="h-4 w-4" /> Export CSV
-            </Button>
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsv} />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importClients.isPending} className="gap-2">
+                {importClients.isPending ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />} Import CSV
+              </Button>
+              <Button variant="outline" onClick={exportCSV} disabled={!clients?.length} className="gap-2">
+                <Download className="h-4 w-4" /> Export CSV
+              </Button>
+            </>
           )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>

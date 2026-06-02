@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, getListJobsQueryKey } from "@workspace/api-client-react";
+import { useState, useRef } from "react";
+import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, getListJobsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,10 +14,12 @@ import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, ReceiptText } from "lucide-react";
+import { Pencil, Trash2, ReceiptText, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import Papa from "papaparse";
+import { parseKES, parseDateToISO, normalizeService, findHeader, col, cell } from "@/lib/csv-import";
 
 const SERVICES = ["Laundry", "Carpet Cleaning", "Fumigation", "Sofa/Upholstery", "Deep Cleaning", "Car Wash", "Duvet Cleaning", "Curtain Cleaning", "Mattress Cleaning", "Office Cleaning", "Post-Renovation Cleaning", "General Cleaning", "Other"];
 
@@ -87,6 +89,67 @@ export default function Jobs() {
     }
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importJobs = useImportJobs({
+    mutation: {
+      onSuccess: (res) => {
+        queryClient.invalidateQueries({ queryKey: getListJobsQueryKey({ month }) });
+        toast({ title: `Imported ${res.imported} jobs${res.errors ? ` (${res.errors} skipped)` : ""}` });
+      },
+      onError: () => toast({ title: "Import failed", variant: "destructive" }),
+    }
+  });
+
+  function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    Papa.parse<string[]>(file, {
+      skipEmptyLines: true,
+      complete: (result) => {
+        const data = result.data as string[][];
+        const header = findHeader(data, [/date/i, /client|customer/i]);
+        if (!header) {
+          toast({ title: "Couldn't find a header row with Date and Client columns", variant: "destructive" });
+          return;
+        }
+        const { headerIndex, columns } = header;
+        const dateIdx = col(columns, ["date"]);
+        const clientIdx = col(columns, ["client name", "client", "customer"]);
+        const serviceIdx = col(columns, ["service type", "service", "description"]);
+        const amountIdx = col(columns, ["amount", "cost", "price"]);
+        const locationIdx = col(columns, ["location", "client location"]);
+        const teamIdx = col(columns, ["team"]);
+
+        const rows: Array<{ date: string; clientName: string; serviceType: string; description?: string; location?: string; amount: number; teamMembers: number }> = [];
+        for (let i = headerIndex + 1; i < data.length; i++) {
+          const r = data[i];
+          const clientName = cell(r, clientIdx);
+          if (!clientName || /^expense/i.test(clientName) || /total/i.test(clientName)) continue;
+          const serviceRaw = cell(r, serviceIdx);
+          if (/^expense$/i.test(serviceRaw)) continue;
+          const date = parseDateToISO(cell(r, dateIdx));
+          if (!date) continue;
+          const teamRaw = cell(r, teamIdx);
+          rows.push({
+            date,
+            clientName,
+            serviceType: normalizeService(serviceRaw),
+            description: serviceRaw || undefined,
+            location: cell(r, locationIdx) || undefined,
+            amount: parseKES(cell(r, amountIdx)),
+            teamMembers: teamRaw ? (parseInt(teamRaw, 10) || 0) : 0,
+          });
+        }
+        if (rows.length === 0) {
+          toast({ title: "No valid job rows found in CSV", variant: "destructive" });
+          return;
+        }
+        importJobs.mutate({ data: { rows } });
+      }
+    });
+    e.target.value = "";
+  }
+
   const amount = form.watch("amount");
   const teamMembers = form.watch("teamMembers");
   const defaultWageRate = 1000;
@@ -109,7 +172,13 @@ export default function Jobs() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight text-primary">Job Tracker</h1>
-        <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-48 bg-white" />
+        <div className="flex items-center gap-2">
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsv} />
+          <Button variant="outline" className="gap-2" disabled={importJobs.isPending} onClick={() => fileInputRef.current?.click()}>
+            {importJobs.isPending ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />} Import CSV
+          </Button>
+          <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-48 bg-white" />
+        </div>
       </div>
 
       <Card className="border-t-4 border-t-primary shadow-sm bg-white">

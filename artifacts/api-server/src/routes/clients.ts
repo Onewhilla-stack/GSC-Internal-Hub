@@ -8,21 +8,26 @@ import {
   GetClientParams,
   UpdateClientParams,
   DeleteClientParams,
+  ImportClientsBody,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
 
 const router = Router();
 
-async function generateClientCode(): Promise<string> {
-  const [last] = await db.select({ code: clientsTable.clientCode })
-    .from(clientsTable)
-    .orderBy(sql`${clientsTable.id} DESC`)
-    .limit(1);
+async function nextClientCodeNumber(): Promise<number> {
+  const [row] = await db.select({
+    max: sql<number>`COALESCE(MAX(CAST(NULLIF(regexp_replace(${clientsTable.clientCode}, '\\D', '', 'g'), '') AS INTEGER)), 0)`,
+  }).from(clientsTable);
+  return (row?.max ?? 0) + 1;
+}
 
-  if (!last) return "GSC-001";
-  const num = parseInt(last.code.replace("GSC-", "")) + 1;
+function formatClientCode(num: number): string {
   return `GSC-${String(num).padStart(3, "0")}`;
+}
+
+async function generateClientCode(): Promise<string> {
+  return formatClientCode(await nextClientCodeNumber());
 }
 
 async function logActivity(username: string, action: string, recordType: string, recordId: number | null, details: string) {
@@ -79,6 +84,64 @@ router.post("/clients", requireAuth, async (req, res): Promise<void> => {
   await logActivity(username, "Added", "Client", row.id, `${parsed.data.name} (${clientCode})`);
 
   res.status(201).json({ ...row, lastEditedAt: null });
+});
+
+router.post("/clients/import", requireAuth, async (req, res): Promise<void> => {
+  const parsed = ImportClientsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const username = req.session.username!;
+  let imported = 0;
+  let errors = 0;
+
+  // Pre-compute the next auto code once, then increment in-memory so blank-code
+  // rows never collide with each other or with explicitly-provided codes.
+  let nextNum = await nextClientCodeNumber();
+  const explicit = new Set(
+    parsed.data.rows.map((r) => r.clientCode?.trim()).filter((c): c is string => !!c)
+  );
+  const used = new Set<string>();
+
+  for (const row of parsed.data.rows) {
+    try {
+      let clientCode: string;
+      if (row.clientCode && row.clientCode.trim() !== "") {
+        clientCode = row.clientCode.trim();
+      } else {
+        let candidate = formatClientCode(nextNum);
+        while (explicit.has(candidate) || used.has(candidate)) {
+          nextNum++;
+          candidate = formatClientCode(nextNum);
+        }
+        clientCode = candidate;
+        nextNum++;
+      }
+      used.add(clientCode);
+      await db.insert(clientsTable).values({
+        clientCode,
+        name: row.name,
+        phone: row.phone ?? null,
+        email: row.email ?? null,
+        location: row.location ?? null,
+        status: row.status,
+        notes: row.notes ?? null,
+        firstVisitDate: row.firstVisitDate ?? null,
+        createdBy: username,
+      });
+      imported++;
+    } catch {
+      errors++;
+    }
+  }
+
+  if (imported > 0) {
+    await logActivity(username, "Added", "Client", null, `Imported ${imported} clients via CSV`);
+  }
+
+  res.json({ imported, errors });
 });
 
 router.get("/clients/:id", requireAuth, async (req, res): Promise<void> => {

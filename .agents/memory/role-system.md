@@ -3,10 +3,12 @@ name: Role system & users
 description: 3-user role system with director/worker access control throughout the app
 ---
 
-## Users
-- director1 / gsc2026 → role: director
-- director2 / gsc2026 → role: director  
-- worker / gsc0000 → role: worker
+## Users (live in DB `users` table)
+- deliction → role: director
+- whilla → role: director
+- worker → role: worker
+
+Do not assume usernames — query `SELECT username, role FROM users` to confirm. Earlier notes said `director1`/`director2`; that was wrong. When seeding/importing historical data, set `created_by` to a real director username or NULL — never a phantom user.
 
 ## How role flows
 - Stored in `users.role` column (text)
