@@ -22,6 +22,7 @@ export interface PasswordUpdate {
 export interface AuthUser {
   id: number;
   username: string;
+  role: string;
 }
 
 export interface DashboardStats {
@@ -298,6 +299,21 @@ export interface SettingsUpdate {
   monthlyRent?: number;
 }
 
+export interface ActivityLogEntry {
+  id: number;
+  timestamp: string;
+  username: string;
+  action: string;
+  recordType: string;
+  recordId?: number;
+  details: string;
+}
+
+export interface WorkerDashboard {
+  greeting: string;
+  todayJobs: Job[];
+}
+
 export type GetDashboardStatsParams = {
 /**
  * Month in YYYY-MM format (defaults to current month)
@@ -347,4 +363,9 @@ month: string;
 };
 
 export type ExportData200 = { [key: string]: unknown };
+
+export type GetAuditLogParams = {
+limit?: number;
+offset?: number;
+};
 

@@ -8,6 +8,8 @@ import clientsRouter from "./clients";
 import receiptsRouter from "./receipts";
 import analyticsRouter from "./analytics";
 import settingsRouter from "./settings";
+import auditLogRouter from "./audit-log";
+import workerRouter from "./worker";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(clientsRouter);
 router.use(receiptsRouter);
 router.use(analyticsRouter);
 router.use(settingsRouter);
+router.use(auditLogRouter);
+router.use(workerRouter);
 
 export default router;

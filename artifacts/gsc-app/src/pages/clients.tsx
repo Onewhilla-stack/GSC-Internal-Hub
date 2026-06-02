@@ -1,21 +1,23 @@
 import { useState } from "react";
-import { useListClients, useCreateClient, getListClientsQueryKey } from "@workspace/api-client-react";
+import { useListClients, useCreateClient, useUpdateClient, useDeleteClient, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatKES, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Plus, Search } from "lucide-react";
+import { Download, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/lib/auth";
 
 const STATUSES = ["New", "Existing", "Referral"];
 
@@ -27,28 +29,31 @@ const clientSchema = z.object({
   status: z.string().min(1, "Status required"),
 });
 
+type ClientFormData = z.infer<typeof clientSchema>;
+
 export default function Clients() {
+  const { isDirector } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
-  const { data: clients, isLoading } = useListClients({ 
+  const [editClient, setEditClient] = useState<{ id: number; clientCode: string; name: string } & ClientFormData | null>(null);
+
+  const { data: clients, isLoading } = useListClients({
     search: search || undefined,
     status: statusFilter !== "all" ? statusFilter : undefined
   });
-  
-  const form = useForm<z.infer<typeof clientSchema>>({
+
+  const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
-    defaultValues: {
-      name: "",
-      phone: "",
-      email: "",
-      location: "",
-      status: "New",
-    }
+    defaultValues: { name: "", phone: "", email: "", location: "", status: "New" }
+  });
+
+  const editForm = useForm<ClientFormData>({
+    resolver: zodResolver(clientSchema),
+    defaultValues: { name: "", phone: "", email: "", location: "", status: "New" }
   });
 
   const createClient = useCreateClient({
@@ -62,36 +67,59 @@ export default function Clients() {
     }
   });
 
-  function onSubmit(data: z.infer<typeof clientSchema>) {
-    createClient.mutate({ data });
-  }
+  const updateClient = useUpdateClient({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+        setEditClient(null);
+        toast({ title: "Client updated" });
+      }
+    }
+  });
+
+  const deleteClient = useDeleteClient({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+        toast({ title: "Client removed" });
+      }
+    }
+  });
 
   const exportCSV = () => {
     if (!clients) return;
-    const headers = ["ID", "Name", "Phone", "Email", "Location", "Status", "First Visit", "Created"];
+    const headers = ["ID", "Name", "Phone", "Email", "Location", "Status", "First Visit", "Added By"];
     const rows = clients.map(c => [
-      c.clientCode, c.name, c.phone || "", c.email || "", c.location || "", c.status, c.firstVisitDate || "", c.createdAt
+      c.clientCode, c.name, c.phone || "", c.email || "", c.location || "", c.status, c.firstVisitDate || "", (c as any).createdBy || ""
     ]);
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `gsc-clients-${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.download = `gsc-clients-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  function openEdit(c: NonNullable<typeof clients>[0]) {
+    editForm.reset({ name: c.name, phone: c.phone ?? "", email: c.email ?? "", location: c.location ?? "", status: c.status });
+    setEditClient({ id: c.id, clientCode: c.clientCode, name: c.name, phone: c.phone ?? "", email: c.email ?? "", location: c.location ?? "", status: c.status });
+  }
+
+  const colCount = isDirector ? 8 : 6;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight text-primary">Client Database</h1>
+        <h1 className="text-3xl font-bold text-primary tracking-tight">Client Database</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportCSV} disabled={!clients?.length} className="gap-2">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
-          
+          {isDirector && (
+            <Button variant="outline" onClick={exportCSV} disabled={!clients?.length} className="gap-2">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+          )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-secondary text-black hover:bg-secondary/90 gap-2">
@@ -99,35 +127,30 @@ export default function Clients() {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Client</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Add New Client</DialogTitle></DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                <form onSubmit={form.handleSubmit((data) => createClient.mutate({ data }))} className="space-y-4 pt-4">
                   <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="phone" render={({ field }) => (
-                      <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="email" render={({ field }) => (
                       <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="location" render={({ field }) => (
-                    <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                   )} />
                   <FormField control={form.control} name="status" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
+                        <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                       </Select>
-                      <FormMessage />
                     </FormItem>
                   )} />
                   <Button type="submit" disabled={createClient.isPending} className="w-full">
@@ -145,12 +168,7 @@ export default function Clients() {
           <div className="p-4 border-b flex flex-col sm:flex-row gap-4 justify-between bg-gray-50">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input 
-                placeholder="Search clients..." 
-                className="pl-9 bg-white"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <Input placeholder="Search clients..." className="pl-9 bg-white" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48 bg-white"><SelectValue placeholder="All Statuses" /></SelectTrigger>
@@ -171,33 +189,60 @@ export default function Clients() {
                   <TableHead className="text-white">Location</TableHead>
                   <TableHead className="text-white">Status</TableHead>
                   <TableHead className="text-white">First Visit</TableHead>
+                  {isDirector && <TableHead className="text-white">Added By</TableHead>}
+                  {isDirector && <TableHead className="text-white text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center h-24"><Spinner /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={colCount} className="text-center h-24"><Spinner /></TableCell></TableRow>
                 ) : clients?.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center h-24 text-gray-500">No clients found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={colCount} className="text-center h-24 text-gray-500">No clients found</TableCell></TableRow>
                 ) : (
                   clients?.map(client => (
-                    <TableRow 
-                      key={client.id} 
-                      className="cursor-pointer hover:bg-gray-50"
-                      onClick={() => setLocation(`/clients/${client.id}`)}
-                    >
-                      <TableCell className="font-mono text-sm text-gray-500">{client.clientCode}</TableCell>
-                      <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">{client.phone || "-"}</div>
+                    <TableRow key={client.id} className="cursor-pointer hover:bg-gray-50">
+                      <TableCell className="font-mono text-sm text-gray-500" onClick={() => setLocation(`/clients/${client.id}`)}>{client.clientCode}</TableCell>
+                      <TableCell className="font-medium" onClick={() => setLocation(`/clients/${client.id}`)}>{client.name}</TableCell>
+                      <TableCell onClick={() => setLocation(`/clients/${client.id}`)}>
+                        <div className="text-sm">{client.phone || "—"}</div>
                         <div className="text-xs text-gray-500">{client.email || ""}</div>
                       </TableCell>
-                      <TableCell>{client.location || "-"}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {client.status}
-                        </span>
+                      <TableCell onClick={() => setLocation(`/clients/${client.id}`)}>{client.location || "—"}</TableCell>
+                      <TableCell onClick={() => setLocation(`/clients/${client.id}`)}>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">{client.status}</span>
                       </TableCell>
-                      <TableCell className="text-sm">{client.firstVisitDate ? formatDate(client.firstVisitDate) : "-"}</TableCell>
+                      <TableCell className="text-sm" onClick={() => setLocation(`/clients/${client.id}`)}>{client.firstVisitDate ? formatDate(client.firstVisitDate) : "—"}</TableCell>
+                      {isDirector && (
+                        <TableCell className="text-xs text-gray-400">
+                          {(client as any).createdBy ?? "—"}
+                        </TableCell>
+                      )}
+                      {isDirector && (
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEdit(client); }}>
+                              <Pencil className="h-3.5 w-3.5 text-primary" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove {client.name}?</AlertDialogTitle>
+                                  <AlertDialogDescription>This will permanently remove the client record and cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => deleteClient.mutate({ id: client.id })}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
@@ -206,6 +251,46 @@ export default function Clients() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Client Dialog */}
+      <Dialog open={!!editClient} onOpenChange={(o) => !o && setEditClient(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit {editClient?.name} ({editClient?.clientCode})</DialogTitle></DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit((data) => updateClient.mutate({ id: editClient!.id, data }))} className="space-y-4">
+              <FormField control={editForm.control} name="name" render={({ field }) => (
+                <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={editForm.control} name="phone" render={({ field }) => (
+                  <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                )} />
+                <FormField control={editForm.control} name="email" render={({ field }) => (
+                  <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl></FormItem>
+                )} />
+              </div>
+              <FormField control={editForm.control} name="location" render={({ field }) => (
+                <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+              )} />
+              <FormField control={editForm.control} name="status" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setEditClient(null)}>Cancel</Button>
+                <Button type="submit" disabled={updateClient.isPending} className="bg-primary text-white">
+                  {updateClient.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null} Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

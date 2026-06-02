@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, clientsTable, jobsTable } from "@workspace/db";
+import { db, clientsTable, jobsTable, activityLogTable } from "@workspace/db";
 import { eq, or, ilike, sql } from "drizzle-orm";
 import {
   ListClientsQueryParams,
@@ -10,6 +10,7 @@ import {
   DeleteClientParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { requireDirector } from "../middlewares/requireDirector";
 
 const router = Router();
 
@@ -22,6 +23,10 @@ async function generateClientCode(): Promise<string> {
   if (!last) return "GSC-001";
   const num = parseInt(last.code.replace("GSC-", "")) + 1;
   return `GSC-${String(num).padStart(3, "0")}`;
+}
+
+async function logActivity(username: string, action: string, recordType: string, recordId: number | null, details: string) {
+  await db.insert(activityLogTable).values({ username, action, recordType, recordId, details });
 }
 
 router.get("/clients", requireAuth, async (req, res): Promise<void> => {
@@ -43,7 +48,10 @@ router.get("/clients", requireAuth, async (req, res): Promise<void> => {
   }
 
   const rows = await query.orderBy(sql`${clientsTable.id} ASC`);
-  res.json(rows);
+  res.json(rows.map(r => ({
+    ...r,
+    lastEditedAt: r.lastEditedAt?.toISOString() ?? null,
+  })));
 });
 
 router.post("/clients", requireAuth, async (req, res): Promise<void> => {
@@ -54,6 +62,7 @@ router.post("/clients", requireAuth, async (req, res): Promise<void> => {
   }
 
   const clientCode = await generateClientCode();
+  const username = req.session.username!;
 
   const [row] = await db.insert(clientsTable).values({
     clientCode,
@@ -64,9 +73,12 @@ router.post("/clients", requireAuth, async (req, res): Promise<void> => {
     status: parsed.data.status,
     notes: parsed.data.notes ?? null,
     firstVisitDate: parsed.data.firstVisitDate ?? null,
+    createdBy: username,
   }).returning();
 
-  res.status(201).json(row);
+  await logActivity(username, "Added", "Client", row.id, `${parsed.data.name} (${clientCode})`);
+
+  res.status(201).json({ ...row, lastEditedAt: null });
 });
 
 router.get("/clients/:id", requireAuth, async (req, res): Promise<void> => {
@@ -82,7 +94,6 @@ router.get("/clients/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Get transactions by matching client name (or clientId if available)
   const transactions = await db.select().from(jobsTable)
     .where(eq(jobsTable.clientName, client.name))
     .orderBy(sql`${jobsTable.date} DESC`);
@@ -91,7 +102,6 @@ router.get("/clients/:id", requireAuth, async (req, res): Promise<void> => {
   const totalVisits = transactions.length;
   const averageSpend = totalVisits > 0 ? totalSpent / totalVisits : 0;
 
-  // Favourite service
   const serviceCount: Record<string, number> = {};
   for (const t of transactions) {
     serviceCount[t.serviceType] = (serviceCount[t.serviceType] ?? 0) + 1;
@@ -103,7 +113,7 @@ router.get("/clients/:id", requireAuth, async (req, res): Promise<void> => {
   const lastVisitDate = dates[dates.length - 1] ?? null;
 
   res.json({
-    client,
+    client: { ...client, lastEditedAt: client.lastEditedAt?.toISOString() ?? null },
     stats: { totalSpent, totalVisits, averageSpend, favouriteService, firstVisitDate, lastVisitDate },
     transactions: transactions.map(t => ({
       id: t.id,
@@ -116,7 +126,7 @@ router.get("/clients/:id", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
-router.patch("/clients/:id", requireAuth, async (req, res): Promise<void> => {
+router.patch("/clients/:id", requireAuth, requireDirector, async (req, res): Promise<void> => {
   const params = UpdateClientParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -129,8 +139,10 @@ router.patch("/clients/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const username = req.session.username!;
+
   const [row] = await db.update(clientsTable)
-    .set(parsed.data)
+    .set({ ...parsed.data, lastEditedBy: username, lastEditedAt: new Date() })
     .where(eq(clientsTable.id, params.data.id))
     .returning();
 
@@ -139,10 +151,12 @@ router.patch("/clients/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(row);
+  await logActivity(username, "Edited", "Client", row.id, `${row.name} (${row.clientCode})`);
+
+  res.json({ ...row, lastEditedAt: row.lastEditedAt?.toISOString() ?? null });
 });
 
-router.delete("/clients/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/clients/:id", requireAuth, requireDirector, async (req, res): Promise<void> => {
   const params = DeleteClientParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -154,6 +168,8 @@ router.delete("/clients/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Client not found" });
     return;
   }
+
+  await logActivity(req.session.username!, "Deleted", "Client", params.data.id, `${row.name} (${row.clientCode})`);
 
   res.sendStatus(204);
 });

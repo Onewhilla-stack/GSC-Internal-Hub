@@ -30,8 +30,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   req.session.userId = user.id;
   req.session.username = user.username;
+  req.session.role = user.role;
 
-  res.json({ id: user.id, username: user.username });
+  res.json({ id: user.id, username: user.username, role: user.role });
 });
 
 router.post("/auth/logout", (req, res): void => {
@@ -40,8 +41,15 @@ router.post("/auth/logout", (req, res): void => {
   });
 });
 
-router.get("/auth/me", requireAuth, (req, res): void => {
-  res.json({ id: req.session.userId, username: req.session.username });
+router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
+  // Re-fetch role from DB in case it changed
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!));
+  if (!user) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  req.session.role = user.role;
+  res.json({ id: user.id, username: user.username, role: user.role });
 });
 
 router.patch("/auth/password", requireAuth, async (req, res): Promise<void> => {

@@ -4,3 +4,4 @@ export * from "./jobs";
 export * from "./expenses";
 export * from "./receipts";
 export * from "./settings";
+export * from "./activity-log";

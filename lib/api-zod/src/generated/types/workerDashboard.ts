@@ -5,9 +5,9 @@
  * Gold Standard Cleaners internal management API
  * OpenAPI spec version: 0.1.0
  */
+import type { Job } from './job';
 
-export interface AuthUser {
-  id: number;
-  username: string;
-  role: string;
+export interface WorkerDashboard {
+  greeting: string;
+  todayJobs: Job[];
 }

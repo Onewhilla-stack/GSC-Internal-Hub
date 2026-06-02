@@ -35,7 +35,7 @@ export default function Expenses() {
     month, 
     category: categoryFilter !== "all" ? categoryFilter : undefined 
   });
-  const { data: summary } = useGetExpensesMonthlySummary(month, { query: { enabled: !!month, queryKey: getGetExpensesMonthlySummaryQueryKey(month) } });
+  const { data: summary } = useGetExpensesMonthlySummary({ month }, { query: { enabled: !!month, queryKey: getGetExpensesMonthlySummaryQueryKey({ month }) } });
   
   const form = useForm<z.infer<typeof expenseSchema>>({
     resolver: zodResolver(expenseSchema),
@@ -51,7 +51,7 @@ export default function Expenses() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetExpensesMonthlySummaryQueryKey(month) });
+        queryClient.invalidateQueries({ queryKey: getGetExpensesMonthlySummaryQueryKey({ month }) });
         form.reset({
           ...form.getValues(),
           description: "",

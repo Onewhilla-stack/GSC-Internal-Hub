@@ -10,27 +10,38 @@ import {
   LineChart, 
   Settings, 
   LogOut,
-  Wallet
+  Wallet,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
-const navItems = [
+const directorNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/jobs", label: "Job Tracker", icon: Briefcase },
   { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
   { href: "/analytics", label: "Analytics", icon: LineChart },
+  { href: "/activity-log", label: "Activity Log", icon: ClipboardList },
   { href: "/settings", label: "Settings", icon: Settings },
+];
+
+const workerNavItems = [
+  { href: "/dashboard", label: "My Jobs", icon: Briefcase },
+  { href: "/clients", label: "Clients", icon: Users },
+  { href: "/receipts", label: "Receipts", icon: ReceiptText },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, isDirector } = useAuth();
   const queryClient = useQueryClient();
   
+  const navItems = isDirector ? directorNavItems : workerNavItems;
+
   const logoutMutation = useLogout({
     mutation: {
       onSuccess: () => {
@@ -48,7 +59,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="text-primary">GSC</span>
             <span className="text-secondary">SYSTEM</span>
           </div>
-          <div className="text-xs text-gray-500 mt-1 uppercase tracking-widest">{user?.username} logged in</div>
+          <div className="text-xs text-gray-500 mt-1 uppercase tracking-widest">{user?.username}</div>
+          <Badge className={cn("mt-1 text-[10px] px-1.5 py-0", isDirector ? "bg-secondary text-black" : "bg-primary text-white")}>
+            {isDirector ? "Director" : "Worker"}
+          </Badge>
         </div>
         
         <nav className="flex-1 px-3 space-y-1">
@@ -89,9 +103,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col min-h-[100dvh] pb-16 md:pb-0">
         {/* Mobile Header */}
         <header className="md:hidden bg-black text-white p-4 flex items-center justify-between">
-          <div className="font-bold text-xl tracking-tighter">
-            <span className="text-primary">GSC</span>
-            <span className="text-secondary">SYSTEM</span>
+          <div className="flex items-center gap-2">
+            <div className="font-bold text-xl tracking-tighter">
+              <span className="text-primary">GSC</span>
+              <span className="text-secondary">SYSTEM</span>
+            </div>
+            <Badge className={cn("text-[10px] px-1.5 py-0", isDirector ? "bg-secondary text-black" : "bg-primary text-white")}>
+              {isDirector ? "Director" : "Worker"}
+            </Badge>
           </div>
           <Button variant="ghost" size="icon" onClick={() => logoutMutation.mutate()}>
             <LogOut className="h-5 w-5 text-gray-400" />

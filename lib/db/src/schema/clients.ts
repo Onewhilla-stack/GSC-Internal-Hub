@@ -12,6 +12,9 @@ export const clientsTable = pgTable("clients", {
   status: text("status").notNull().default("New"),
   notes: text("notes"),
   firstVisitDate: text("first_visit_date"),
+  createdBy: text("created_by"),
+  lastEditedBy: text("last_edited_by"),
+  lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

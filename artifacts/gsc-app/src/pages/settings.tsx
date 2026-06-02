@@ -1,4 +1,4 @@
-import { useGetSettings, useUpdateSettings, useUpdatePassword, useExportData, getGetSettingsQueryKey } from "@workspace/api-client-react";
+import { useGetSettings, useUpdateSettings, useUpdatePassword, useExportData, getGetSettingsQueryKey, getExportDataQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,22 +71,23 @@ export default function Settings() {
     }
   });
 
-  const exportData = useExportData({
-    mutation: {
-      onSuccess: (data) => {
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `gsc-backup-${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast({ title: "Backup downloaded successfully" });
-      }
-    }
-  });
+  const exportData = useExportData({ query: { enabled: false, queryKey: getExportDataQueryKey() } });
+
+  function handleExport() {
+    exportData.refetch().then(({ data }) => {
+      if (!data) return;
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `gsc-backup-${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: "Backup downloaded successfully" });
+    });
+  }
 
   function onSettingsSubmit(data: z.infer<typeof settingsSchema>) {
     updateSettings.mutate({ data });
@@ -174,8 +175,8 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="flex items-center gap-4">
             <Button 
-              onClick={() => exportData.mutate()} 
-              disabled={exportData.isPending}
+              onClick={handleExport}
+              disabled={exportData.isFetching}
               className="bg-secondary text-black hover:bg-secondary/90 gap-2"
             >
               {exportData.isPending ? <Spinner className="h-4 w-4" /> : <Download className="h-4 w-4" />} Download Full System Backup (JSON)

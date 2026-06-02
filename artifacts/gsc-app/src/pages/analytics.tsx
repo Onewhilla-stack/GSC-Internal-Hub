@@ -5,7 +5,8 @@ import {
   useGetServiceBreakdown, 
   useGetExpenseBreakdown, 
   useGetKeyStats,
-  useGetMonthDrill
+  useGetMonthDrill,
+  getGetMonthDrillQueryKey,
 } from "@workspace/api-client-react";
 import { formatKES } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,10 +23,10 @@ export default function Analytics() {
   
   const { data: plSummary, isLoading: plLoading } = useGetPLSummary();
   const { data: revTrend } = useGetRevenueTrend();
-  const { data: serviceBreakdown } = useGetServiceBreakdown({ month: drillMonth });
-  const { data: expBreakdown } = useGetExpenseBreakdown({ month: drillMonth });
+  const { data: serviceBreakdown } = useGetServiceBreakdown();
+  const { data: expBreakdown } = useGetExpenseBreakdown();
   const { data: keyStats, isLoading: statsLoading } = useGetKeyStats();
-  const { data: monthDrill } = useGetMonthDrill(drillMonth, { query: { enabled: !!drillMonth } });
+  const { data: monthDrill } = useGetMonthDrill({ month: drillMonth }, { query: { enabled: !!drillMonth, queryKey: getGetMonthDrillQueryKey({ month: drillMonth }) } });
 
   return (
     <div className="space-y-6">

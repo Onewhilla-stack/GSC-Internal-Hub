@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActivityLogEntry,
   AuthUser,
   Client,
   ClientInput,
@@ -33,6 +34,7 @@ import type {
   ExpenseInput,
   ExpenseUpdate,
   ExportData200,
+  GetAuditLogParams,
   GetDailyRevenueParams,
   GetDashboardStatsParams,
   GetExpensesMonthlySummaryParams,
@@ -59,7 +61,8 @@ import type {
   ServiceRevenue,
   Settings,
   SettingsUpdate,
-  TopClient
+  TopClient,
+  WorkerDashboard
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -3101,6 +3104,167 @@ export function useExportData<TData = Awaited<ReturnType<typeof exportData>>, TE
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getExportDataQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetAuditLogUrl = (params?: GetAuditLogParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/audit-log?${stringifiedParams}` : `/api/audit-log`
+}
+
+/**
+ * @summary Get activity log (directors only)
+ */
+export const getAuditLog = async (params?: GetAuditLogParams, options?: RequestInit): Promise<ActivityLogEntry[]> => {
+
+  return customFetch<ActivityLogEntry[]>(getGetAuditLogUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuditLogQueryKey = (params?: GetAuditLogParams,) => {
+    return [
+    `/api/audit-log`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAuditLogQueryOptions = <TData = Awaited<ReturnType<typeof getAuditLog>>, TError = ErrorType<void>>(params?: GetAuditLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuditLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuditLogQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuditLog>>> = ({ signal }) => getAuditLog(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuditLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAuditLogQueryResult = NonNullable<Awaited<ReturnType<typeof getAuditLog>>>
+export type GetAuditLogQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get activity log (directors only)
+ */
+
+export function useGetAuditLog<TData = Awaited<ReturnType<typeof getAuditLog>>, TError = ErrorType<void>>(
+ params?: GetAuditLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuditLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAuditLogQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetWorkerDashboardUrl = () => {
+
+
+
+
+  return `/api/worker/dashboard`
+}
+
+/**
+ * @summary Worker dashboard (today jobs)
+ */
+export const getWorkerDashboard = async ( options?: RequestInit): Promise<WorkerDashboard> => {
+
+  return customFetch<WorkerDashboard>(getGetWorkerDashboardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWorkerDashboardQueryKey = () => {
+    return [
+    `/api/worker/dashboard`
+    ] as const;
+    }
+
+
+export const getGetWorkerDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getWorkerDashboard>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWorkerDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWorkerDashboardQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWorkerDashboard>>> = ({ signal }) => getWorkerDashboard({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWorkerDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWorkerDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getWorkerDashboard>>>
+export type GetWorkerDashboardQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Worker dashboard (today jobs)
+ */
+
+export function useGetWorkerDashboard<TData = Awaited<ReturnType<typeof getWorkerDashboard>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWorkerDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWorkerDashboardQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

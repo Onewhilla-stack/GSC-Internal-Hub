@@ -8,6 +8,9 @@ export const expensesTable = pgTable("expenses", {
   category: text("category").notNull(),
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  createdBy: text("created_by"),
+  lastEditedBy: text("last_edited_by"),
+  lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

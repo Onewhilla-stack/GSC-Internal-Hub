@@ -26,7 +26,8 @@ export const LoginBody = zod.object({
 
 export const LoginResponse = zod.object({
   "id": zod.number(),
-  "username": zod.string()
+  "username": zod.string(),
+  "role": zod.string()
 })
 
 
@@ -35,7 +36,8 @@ export const LoginResponse = zod.object({
  */
 export const GetMeResponse = zod.object({
   "id": zod.number(),
-  "username": zod.string()
+  "username": zod.string(),
+  "role": zod.string()
 })
 
 
@@ -651,5 +653,48 @@ export const UpdateSettingsResponse = zod.object({
 export const ExportDataResponse = zod.object({
 
 }).passthrough()
+
+
+/**
+ * @summary Get activity log (directors only)
+ */
+export const GetAuditLogQueryParams = zod.object({
+  "limit": zod.coerce.number().optional(),
+  "offset": zod.coerce.number().optional()
+})
+
+export const GetAuditLogResponseItem = zod.object({
+  "id": zod.number(),
+  "timestamp": zod.string(),
+  "username": zod.string(),
+  "action": zod.string(),
+  "recordType": zod.string(),
+  "recordId": zod.number().optional(),
+  "details": zod.string()
+})
+export const GetAuditLogResponse = zod.array(GetAuditLogResponseItem)
+
+
+/**
+ * @summary Worker dashboard (today jobs)
+ */
+export const GetWorkerDashboardResponse = zod.object({
+  "greeting": zod.string(),
+  "todayJobs": zod.array(zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "date": zod.string(),
+  "clientName": zod.string(),
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "amount": zod.number(),
+  "teamMembers": zod.number(),
+  "wages": zod.number(),
+  "netIncome": zod.number(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+}))
+})
 
 

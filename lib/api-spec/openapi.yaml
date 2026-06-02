@@ -736,6 +736,47 @@ paths:
               schema:
                 type: object
 
+  # ─── AUDIT LOG ────────────────────────────────────────────────────────────
+  /audit-log:
+    get:
+      operationId: getAuditLog
+      tags: [auth]
+      summary: Get activity log (directors only)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLogEntry"
+        "403":
+          description: Director access required
+
+  # ─── WORKER DASHBOARD ─────────────────────────────────────────────────────
+  /worker/dashboard:
+    get:
+      operationId: getWorkerDashboard
+      tags: [dashboard]
+      summary: Worker dashboard (today jobs)
+      responses:
+        "200":
+          description: Worker dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkerDashboard"
+
 components:
   schemas:
     HealthStatus:
@@ -762,10 +803,11 @@ components:
 
     AuthUser:
       type: object
-      required: [id, username]
+      required: [id, username, role]
       properties:
         id: { type: integer }
         username: { type: string }
+        role: { type: string }
 
     # ── Dashboard ──
     DashboardStats:
@@ -1093,3 +1135,26 @@ components:
       properties:
         wagePerPersonPerDay: { type: number }
         monthlyRent: { type: number }
+
+    # ── Audit Log ──
+    ActivityLogEntry:
+      type: object
+      required: [id, timestamp, username, action, recordType, details]
+      properties:
+        id: { type: integer }
+        timestamp: { type: string }
+        username: { type: string }
+        action: { type: string }
+        recordType: { type: string }
+        recordId: { type: integer }
+        details: { type: string }
+
+    WorkerDashboard:
+      type: object
+      required: [todayJobs, greeting]
+      properties:
+        greeting: { type: string }
+        todayJobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"

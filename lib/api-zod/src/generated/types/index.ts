@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './activityLogEntry';
 export * from './authUser';
 export * from './client';
 export * from './clientInput';
@@ -22,6 +23,7 @@ export * from './expenseImportRow';
 export * from './expenseInput';
 export * from './expenseUpdate';
 export * from './exportData200';
+export * from './getAuditLogParams';
 export * from './getDailyRevenueParams';
 export * from './getDashboardStatsParams';
 export * from './getExpensesMonthlySummaryParams';
@@ -50,3 +52,4 @@ export * from './serviceRevenue';
 export * from './settings';
 export * from './settingsUpdate';
 export * from './topClient';
+export * from './workerDashboard';

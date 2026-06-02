@@ -15,6 +15,7 @@ import ClientProfile from "@/pages/client-profile";
 import Receipts from "@/pages/receipts";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import ActivityLog from "@/pages/activity-log";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,28 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   );
 }
 
+function DirectorRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated, isLoading, isDirector } = useAuth();
+
+  if (isLoading) {
+    return <div className="h-screen w-full flex items-center justify-center"><Spinner className="w-8 h-8" /></div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!isDirector) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return (
+    <Layout>
+      <Component />
+    </Layout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -50,12 +73,13 @@ function Router() {
       <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/jobs" component={() => <ProtectedRoute component={Jobs} />} />
-      <Route path="/expenses" component={() => <ProtectedRoute component={Expenses} />} />
+      <Route path="/expenses" component={() => <DirectorRoute component={Expenses} />} />
       <Route path="/clients" component={() => <ProtectedRoute component={Clients} />} />
       <Route path="/clients/:id" component={() => <ProtectedRoute component={ClientProfile} />} />
       <Route path="/receipts" component={() => <ProtectedRoute component={Receipts} />} />
-      <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
-      <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+      <Route path="/analytics" component={() => <DirectorRoute component={Analytics} />} />
+      <Route path="/activity-log" component={() => <DirectorRoute component={ActivityLog} />} />
+      <Route path="/settings" component={() => <DirectorRoute component={Settings} />} />
       <Route component={NotFound} />
     </Switch>
   );

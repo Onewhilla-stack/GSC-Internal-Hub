@@ -15,6 +15,9 @@ export const jobsTable = pgTable("jobs", {
   wages: numeric("wages", { precision: 12, scale: 2 }).notNull(),
   netIncome: numeric("net_income", { precision: 12, scale: 2 }).notNull(),
   notes: text("notes"),
+  createdBy: text("created_by"),
+  lastEditedBy: text("last_edited_by"),
+  lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

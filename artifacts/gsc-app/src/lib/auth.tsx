@@ -1,19 +1,25 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useGetMe, AuthUser } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
+
+interface AuthUser {
+  id: number;
+  username: string;
+  role: string;
+}
 
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isDirector: boolean;
+  isWorker: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: queryLoading, isError } = useGetMe({
-    query: {
-      retry: false,
-    }
+    query: { retry: false, queryKey: getGetMeQueryKey() },
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -24,10 +30,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [queryLoading]);
 
-  const value = {
-    user: user || null,
+  const authUser = (user && !isError) ? user as AuthUser : null;
+
+  const value: AuthContextType = {
+    user: authUser,
     isLoading,
-    isAuthenticated: !!user && !isError,
+    isAuthenticated: !!authUser,
+    isDirector: authUser?.role === "director",
+    isWorker: authUser?.role === "worker",
   };
 
   return (

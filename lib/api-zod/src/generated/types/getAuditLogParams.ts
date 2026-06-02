@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AuthUser {
-  id: number;
-  username: string;
-  role: string;
-}
+export type GetAuditLogParams = {
+limit?: number;
+offset?: number;
+};

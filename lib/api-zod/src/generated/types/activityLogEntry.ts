@@ -6,8 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AuthUser {
+export interface ActivityLogEntry {
   id: number;
+  timestamp: string;
   username: string;
-  role: string;
+  action: string;
+  recordType: string;
+  recordId?: number;
+  details: string;
 }
