@@ -57,6 +57,7 @@ type ReceiptRow = {
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 const createReceiptSchema = z.object({
+  jobId: z.number().nullable().optional(),
   clientName: z.string().min(1, "Client name required"),
   date: z.string().min(1, "Date required"),
   paymentStatus: z.string().default("Pending"),
@@ -221,6 +222,10 @@ export default function Receipts() {
   const prefillService = urlParams.get("service") ?? "";
   const prefillAmount = parseFloat(urlParams.get("amount") ?? "0");
   const prefillDate = urlParams.get("date") ?? new Date().toISOString().split("T")[0];
+  // When a receipt is generated from a job, link it back to that job so the
+  // receipt row carries jobId (otherwise receipts.jobId stays null).
+  const prefillJobIdRaw = urlParams.get("jobId");
+  const prefillJobId = prefillJobIdRaw && !Number.isNaN(Number(prefillJobIdRaw)) ? Number(prefillJobIdRaw) : null;
 
   // Forms
   const emptyItem = { serviceType: "", description: "", amount: 0 };
@@ -252,6 +257,7 @@ export default function Receipts() {
   const createForm = useForm<z.infer<typeof createReceiptSchema>>({
     resolver: zodResolver(createReceiptSchema),
     defaultValues: {
+      jobId: prefillJobId,
       clientName: prefillClient,
       date: prefillDate,
       paymentStatus: "Pending",
