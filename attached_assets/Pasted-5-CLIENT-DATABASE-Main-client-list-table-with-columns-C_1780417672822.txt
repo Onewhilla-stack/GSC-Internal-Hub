@@ -1,0 +1,87 @@
+5. CLIENT DATABASE
+
+Main client list table with columns: Client ID (GSC-001 format), Name, Phone, Email, Location, Status, First Visit, Last Visit, Total Visits, Total Spent (KES)
+Search bar — search by name or location
+Filter by Status: All, New, Existing, Referral
+Add New Client button — form with fields: Name, Phone, Email, Location, Status (New/Existing/Referral), Notes, First Visit Date (past dates allowed for entering old book records)
+Click any client row to open their full profile page showing:
+
+Client details at the top (name, phone, email, location, status)
+Edit Details button
+Summary stats: Total Spent, Total Visits, Favourite Service, Average Spend Per Visit, First Visit Date, Last Visit Date
+Full transaction history table: Date, Service, Description, Amount, Net Income
+Editable notes section at the bottom
+Download This Client button — exports that single client's complete profile and transaction history as a neatly formatted PDF. PDF should include: client details, summary stats, and full transaction history table. Clean layout, GSC name at top, date of export at bottom
+
+
+Back on the main client list page:
+
+Download All Clients (CSV) button — exports the full client list as a CSV file with all columns for external folder storage
+Download All Clients (PDF) button — exports a formatted PDF list of all clients with their summary stats
+Download Selected Clients button — checkbox each client row, then download just those selected clients as CSV or PDF
+Download Client History button on each row — one click exports that client's full record as PDF without opening their profile
+
+
+
+6. RECEIPT GENERATOR
+
+Select an existing job from a searchable dropdown — auto-fills all fields
+Or fill in manually: Client Name, Date, Service Type, Description, Amount (KES)
+Receipt Number auto-generated in format GSC-RCT-001
+Live receipt preview panel on the right side of the screen showing:
+
+GOLD STANDARD CLEANERS in sky blue bold
+HOME CLEANING EXPERTS in golden yellow smaller text
+Phone numbers and Ngong Road, Nairobi
+Horizontal divider
+Receipt No. and Date right-aligned
+Client: [name]
+Service: [type]
+Description: [text]
+Amount: KES [amount] in bold
+Simple clean receipt layout — nothing fancy, just clear and professional
+
+
+Download Receipt as PDF button
+Receipts are saved in a receipts log table showing: Receipt No., Date, Client, Service, Amount, Download button
+
+7. ANALYTICS
+
+Monthly P&L summary table — all months in rows showing: Month, Revenue, Expenses, Net Profit, Jobs, % Change vs previous month (green/red)
+Line chart — revenue trend across all recorded months
+Bar chart — revenue by service type across all months
+Bar chart — expenses by category across all months
+Key stats panel: Best Month by Revenue, Best Month by Profit, Most Popular Service, Top Client All Time, Average Revenue Per Job, Average Monthly Profit
+Month selector to drill into any specific month and see its full breakdown
+
+8. SETTINGS
+
+Update wage rate per person per day (default KES 1,000)
+Update monthly rent (default KES 25,000)
+Change admin password
+Export This Month button — downloads current month jobs and expenses as CSV
+Export Any Month — select any month from dropdown and download as CSV
+Full Data Backup button — downloads complete database snapshot as JSON file for external storage
+
+DATABASE TABLES:
+
+users (id, username, password_hash)
+clients (id, client_code, name, phone, email, location, status, notes, first_visit_date, created_at)
+jobs (id, client_id, client_name, date, service_type, description, amount, team_members, wages, net_income, location, notes, created_at)
+expenses (id, date, category, description, amount, created_at)
+receipts (id, receipt_number, job_id, client_name, service_type, description, amount, created_at)
+settings (key, value)
+
+SIDEBAR NAVIGATION:
+
+Black background sidebar always visible on desktop
+Icons and labels for: Dashboard, Job Tracker, Expenses, Clients, Receipts, Analytics, Settings
+GSC initials or name at the top in sky blue and golden yellow
+Active page highlighted with golden yellow left border and text
+Collapsible to icon-only mode on smaller screens
+Bottom tab bar on mobile
+
+SEED DATA — add this so the app shows real populated data immediately:
+Clients: Nyachera (Ngando, Existing), Rosey (Millers Court, Existing), Phanice (Jamhuri, Existing), Sharon (Roysambu, Referral), Viona (Existing), Weru (Jamhuri, New), Brian (Wanye, Existing), Roy (Ngong Road, Existing), Hairmaster (Ngong Road, New), Bugi (Lenana Fairview, Existing), Kim (Jamhuri, Existing), Peter Ngoe (Jamhuri, Existing), Razanah (Ngong Road, Existing), Laban (Yellow Stone, Existing), Frank (Kinoo, Existing)
+Jobs in May 2026: Nyachera Carpet Cleaning KES 2,400 — Rosey Laundry KES 2,100 — Phanice Laundry KES 2,000 — Sharon Fumigation KES 8,500 — Viona Deep Cleaning KES 14,400 — Mitchelle Fumigation KES 6,600 — Weru Laundry KES 6,500 — Beth Floor Scrubbing KES 3,500 — Priscillah Sofa Cleaning KES 3,600 — Laban Sofa Cleaning KES 3,500 — Bugi Laundry KES 4,400 — Esther Duvet Cleaning KES 800 — Tiz Carpet Cleaning KES 1,350 — Fazil Carpet Cleaning KES 3,100 — Wayua Laundry KES 2,800 — Rosey Duvet Cleaning KES 1,000 — Weru Fleece Blankets KES 1,800 — Nyachera Duvet Cleaning KES 800 — Linet Curtains KES 1,700 — Autolab Laundry KES 1,000
+Expenses May 2026: Rent KES 25,000 — Tokens KES 5,820 — Detergents KES 1,750 — Labour KES 2,400 — Water KES 1,900 — Wi-Fi KES 2,000 — Lava insect killer KES 1,000 — Shrink wrap KES 2,000 — Rust Off KES 1,000

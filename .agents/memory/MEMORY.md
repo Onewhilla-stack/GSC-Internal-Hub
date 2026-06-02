@@ -1,0 +1,1 @@
+- [Session table setup](session-table.md) — connect-pg-simple's createTableIfMissing fails when bundled by esbuild; create table manually via SQL instead.
