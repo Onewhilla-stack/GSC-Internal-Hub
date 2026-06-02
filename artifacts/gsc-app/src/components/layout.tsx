@@ -61,7 +61,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="text-xs text-gray-500 mt-1 uppercase tracking-widest">{user?.username}</div>
           <Badge className={cn("mt-1 text-[10px] px-1.5 py-0", isDirector ? "bg-secondary text-black" : "bg-primary text-white")}>
-            {isDirector ? "Director" : "Worker"}
+            {isDirector ? "Director" : "Associate"}
           </Badge>
         </div>
         
@@ -109,7 +109,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="text-secondary">SYSTEM</span>
             </div>
             <Badge className={cn("text-[10px] px-1.5 py-0", isDirector ? "bg-secondary text-black" : "bg-primary text-white")}>
-              {isDirector ? "Director" : "Worker"}
+              {isDirector ? "Director" : "Associate"}
             </Badge>
           </div>
           <Button variant="ghost" size="icon" onClick={() => logoutMutation.mutate()}>

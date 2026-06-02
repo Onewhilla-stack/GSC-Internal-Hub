@@ -6,9 +6,13 @@ description: 3-user role system with director/worker access control throughout t
 ## Users (live in DB `users` table)
 - deliction → role: director
 - whilla → role: director
-- worker → role: worker
+- associate → role: worker
 
 Do not assume usernames — query `SELECT username, role FROM users` to confirm. Earlier notes said `director1`/`director2`; that was wrong. When seeding/importing historical data, set `created_by` to a real director username or NULL — never a phantom user.
+
+## "worker" is an internal role code, NOT a user-facing term
+The non-director role value stored in `users.role` / session is the string `"worker"` — keep it as-is (renaming it would touch the DB column, session, and every `role === "worker"` / `isWorker` check for no user benefit). The user-facing term is **"Associate"** (chosen by the user; do not show "Worker" in the UI). The non-director user's *username* was also renamed from `worker` → `associate`. So: internal enum = `worker`, username = `associate`, display label = `Associate`.
+**Why:** User asked to drop the term "worker" from what they see; the enum is an implementation detail they never see.
 
 ## How role flows
 - Stored in `users.role` column (text)

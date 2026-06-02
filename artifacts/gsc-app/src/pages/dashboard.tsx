@@ -19,7 +19,7 @@ import * as z from "zod";
 
 export default function Dashboard() {
   const { isDirector, user } = useAuth();
-  return isDirector ? <DirectorDashboard /> : <WorkerDashboard username={user?.username ?? "worker"} />;
+  return isDirector ? <DirectorDashboard /> : <WorkerDashboard username={user?.username ?? "Associate"} />;
 }
 
 // ─── Director Dashboard ────────────────────────────────────────────────────
