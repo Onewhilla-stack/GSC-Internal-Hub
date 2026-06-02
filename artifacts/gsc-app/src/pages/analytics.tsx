@@ -1,9 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { 
   useGetPLSummary, 
   useGetRevenueTrend, 
-  useGetServiceBreakdown, 
-  useGetExpenseBreakdown, 
   useGetKeyStats,
   useGetMonthDrill,
   getGetMonthDrillQueryKey,
@@ -23,10 +21,18 @@ export default function Analytics() {
   
   const { data: plSummary, isLoading: plLoading } = useGetPLSummary();
   const { data: revTrend } = useGetRevenueTrend();
-  const { data: serviceBreakdown } = useGetServiceBreakdown();
-  const { data: expBreakdown } = useGetExpenseBreakdown();
   const { data: keyStats, isLoading: statsLoading } = useGetKeyStats();
   const { data: monthDrill } = useGetMonthDrill({ month: drillMonth }, { query: { enabled: !!drillMonth, queryKey: getGetMonthDrillQueryKey({ month: drillMonth }) } });
+
+  // Drill-down charts derive from the selected month's data (not all-time).
+  const serviceBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const j of monthDrill?.jobs ?? []) {
+      map.set(j.serviceType, (map.get(j.serviceType) ?? 0) + j.amount);
+    }
+    return Array.from(map, ([serviceType, revenue]) => ({ serviceType, revenue })).sort((a, b) => b.revenue - a.revenue);
+  }, [monthDrill]);
+  const expBreakdown = monthDrill?.expenseBreakdown ?? [];
 
   return (
     <div className="space-y-6">
