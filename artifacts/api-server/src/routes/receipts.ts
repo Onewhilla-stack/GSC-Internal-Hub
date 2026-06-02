@@ -30,8 +30,12 @@ async function logActivity(username: string, action: string, recordType: string,
 }
 
 function formatRow(r: typeof receiptsTable.$inferSelect) {
+  const items = r.items && r.items.length > 0
+    ? r.items
+    : [{ serviceType: r.serviceType, description: r.description, amount: parseFloat(r.amount) }];
   return {
     ...r,
+    items,
     amount: parseFloat(r.amount),
     lastEditedAt: r.lastEditedAt?.toISOString() ?? null,
   };
@@ -107,20 +111,29 @@ router.post("/receipts", requireAuth, async (req, res): Promise<void> => {
   const receiptNumber = await generateReceiptNumber();
   const username = req.session.username!;
 
+  const items = parsed.data.items.map((it) => ({
+    serviceType: it.serviceType,
+    description: it.description ?? null,
+    amount: it.amount,
+  }));
+  const total = items.reduce((s, it) => s + it.amount, 0);
+  const serviceType = items.length === 1 ? items[0].serviceType : "Multiple Services";
+
   const [row] = await db.insert(receiptsTable).values({
     receiptNumber,
     jobId: parsed.data.jobId ?? null,
     clientName: parsed.data.clientName,
-    serviceType: parsed.data.serviceType,
-    description: parsed.data.description ?? null,
-    amount: String(parsed.data.amount),
+    serviceType,
+    description: null,
+    items,
+    amount: total.toFixed(2),
     date: parsed.data.date,
     paymentStatus: parsed.data.paymentStatus ?? "Pending",
     notes: parsed.data.notes ?? null,
     createdBy: username,
   }).returning();
 
-  await logActivity(username, "Added", "Receipt", row.id, `${receiptNumber} for ${parsed.data.clientName} — KES ${parsed.data.amount}`);
+  await logActivity(username, "Added", "Receipt", row.id, `${receiptNumber} for ${parsed.data.clientName} — KES ${total.toFixed(2)}`);
 
   res.status(201).json(formatRow(row));
 });

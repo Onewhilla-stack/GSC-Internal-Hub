@@ -50,6 +50,8 @@ export * from './passwordUpdate';
 export * from './pLMonth';
 export * from './receipt';
 export * from './receiptInput';
+export * from './receiptItem';
+export * from './receiptItemInput';
 export * from './receiptsSummary';
 export * from './receiptUpdate';
 export * from './serviceRevenue';

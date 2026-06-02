@@ -231,6 +231,19 @@ export interface ClientProfile {
   transactions: ClientTransaction[];
 }
 
+export interface ReceiptItem {
+  serviceType: string;
+  /** @nullable */
+  description?: string | null;
+  amount: number;
+}
+
+export interface ReceiptItemInput {
+  serviceType: string;
+  description?: string;
+  amount: number;
+}
+
 export interface Receipt {
   id: number;
   receiptNumber: string;
@@ -240,6 +253,7 @@ export interface Receipt {
   serviceType: string;
   /** @nullable */
   description?: string | null;
+  items: ReceiptItem[];
   amount: number;
   date?: string;
   paymentStatus: string;
@@ -258,9 +272,8 @@ export interface ReceiptInput {
   /** @nullable */
   jobId?: number | null;
   clientName: string;
-  serviceType: string;
-  description?: string;
-  amount: number;
+  /** @minItems 1 */
+  items: ReceiptItemInput[];
   date: string;
   paymentStatus?: string;
   notes?: string;

@@ -1107,9 +1107,25 @@ components:
             $ref: "#/components/schemas/ClientTransaction"
 
     # ── Receipts ──
+    ReceiptItem:
+      type: object
+      required: [serviceType, amount]
+      properties:
+        serviceType: { type: string }
+        description: { type: ["string", "null"] }
+        amount: { type: number }
+
+    ReceiptItemInput:
+      type: object
+      required: [serviceType, amount]
+      properties:
+        serviceType: { type: string }
+        description: { type: string }
+        amount: { type: number }
+
     Receipt:
       type: object
-      required: [id, receiptNumber, clientName, serviceType, amount, paymentStatus, createdAt]
+      required: [id, receiptNumber, clientName, serviceType, items, amount, paymentStatus, createdAt]
       properties:
         id: { type: integer }
         receiptNumber: { type: string }
@@ -1117,6 +1133,9 @@ components:
         clientName: { type: string }
         serviceType: { type: string }
         description: { type: ["string", "null"] }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ReceiptItem" }
         amount: { type: number }
         date: { type: string }
         paymentStatus: { type: string }
@@ -1128,13 +1147,14 @@ components:
 
     ReceiptInput:
       type: object
-      required: [clientName, serviceType, amount, date]
+      required: [clientName, items, date]
       properties:
         jobId: { type: ["integer", "null"] }
         clientName: { type: string }
-        serviceType: { type: string }
-        description: { type: string }
-        amount: { type: number }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ReceiptItemInput" }
         date: { type: string }
         paymentStatus: { type: string }
         notes: { type: string }

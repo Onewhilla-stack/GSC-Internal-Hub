@@ -5,6 +5,7 @@
  * Gold Standard Cleaners internal management API
  * OpenAPI spec version: 0.1.0
  */
+import type { ReceiptItem } from './receiptItem';
 
 export interface Receipt {
   id: number;
@@ -15,6 +16,7 @@ export interface Receipt {
   serviceType: string;
   /** @nullable */
   description?: string | null;
+  items: ReceiptItem[];
   amount: number;
   date?: string;
   paymentStatus: string;

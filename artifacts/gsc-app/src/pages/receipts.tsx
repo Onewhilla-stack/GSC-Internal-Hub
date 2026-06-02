@@ -23,12 +23,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Eye, Download, Pencil, Trash2, ReceiptText, CheckCircle, Clock, AlertCircle, FileText } from "lucide-react";
+import { Search, Plus, Eye, Download, Pencil, Trash2, ReceiptText, CheckCircle, Clock, AlertCircle, FileText, X } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type ReceiptItem = {
+  serviceType: string;
+  description?: string | null;
+  amount: number;
+};
+
 type ReceiptRow = {
   id: number;
   receiptNumber: string;
@@ -36,6 +42,7 @@ type ReceiptRow = {
   clientName: string;
   serviceType: string;
   description?: string | null;
+  items?: ReceiptItem[];
   amount: number;
   date: string;
   paymentStatus: string;
@@ -49,12 +56,14 @@ type ReceiptRow = {
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 const createReceiptSchema = z.object({
   clientName: z.string().min(1, "Client name required"),
-  serviceType: z.string().min(1, "Service required"),
-  description: z.string().optional(),
-  amount: z.coerce.number().min(0),
   date: z.string().min(1, "Date required"),
   paymentStatus: z.string().default("Pending"),
   notes: z.string().optional(),
+  items: z.array(z.object({
+    serviceType: z.string().min(1, "Service required"),
+    description: z.string().optional(),
+    amount: z.coerce.number().min(0),
+  })).min(1, "Add at least one service"),
 });
 
 const editReceiptSchema = z.object({
@@ -112,6 +121,7 @@ function SummaryCard({ title, count, amount, color, icon, showAmount }: {
 
 // ─── Receipt Preview Component ────────────────────────────────────────────────
 function ReceiptPreview({ receipt, isPrint = false }: { receipt: Partial<ReceiptRow> & { receiptNumber: string; paymentStatus: string }; isPrint?: boolean }) {
+  const lineItems = receipt.items ?? [];
   return (
     <div className={`bg-white p-8 w-full max-w-sm mx-auto ${isPrint ? "" : "shadow-md rounded"}`}>
       <div className="text-center mb-6">
@@ -142,17 +152,22 @@ function ReceiptPreview({ receipt, isPrint = false }: { receipt: Partial<Receipt
         </div>
       </div>
 
-      <div className="mb-6 space-y-3 text-sm">
-        <div>
-          <div className="text-xs text-gray-400 uppercase tracking-wide">Service</div>
-          <div className="font-medium">{receipt.serviceType || "—"}</div>
+      <div className="mb-6 text-sm">
+        <div className="flex justify-between text-xs text-gray-400 uppercase tracking-wide mb-2">
+          <span>Service</span>
+          <span>Amount</span>
         </div>
-        {receipt.description && (
-          <div>
-            <div className="text-xs text-gray-400 uppercase tracking-wide">Description</div>
-            <div>{receipt.description}</div>
-          </div>
-        )}
+        <div className="space-y-2">
+          {(lineItems.length > 0 ? lineItems : [{ serviceType: receipt.serviceType ?? "—", description: receipt.description, amount: receipt.amount ?? 0 }]).map((it, i) => (
+            <div key={i} className="flex justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-medium">{it.serviceType || "—"}</div>
+                {it.description && <div className="text-xs text-gray-500">{it.description}</div>}
+              </div>
+              <div className="font-mono whitespace-nowrap">{formatKES(it.amount ?? 0)}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="border-t border-gray-800 pt-4 flex justify-between items-center">
@@ -206,18 +221,19 @@ export default function Receipts() {
   const prefillDate = urlParams.get("date") ?? new Date().toISOString().split("T")[0];
 
   // Forms
+  const emptyItem = { serviceType: "", description: "", amount: 0 };
   const createForm = useForm<z.infer<typeof createReceiptSchema>>({
     resolver: zodResolver(createReceiptSchema),
     defaultValues: {
       clientName: prefillClient,
-      serviceType: prefillService,
-      amount: prefillAmount,
       date: prefillDate,
       paymentStatus: "Pending",
-      description: "",
       notes: "",
+      items: [prefillService ? { serviceType: prefillService, description: "", amount: prefillAmount } : { ...emptyItem }],
     },
   });
+
+  const itemsArray = useFieldArray({ control: createForm.control, name: "items" });
 
   const editForm = useForm<z.infer<typeof editReceiptSchema>>({
     resolver: zodResolver(editReceiptSchema),
@@ -260,7 +276,7 @@ export default function Receipts() {
         queryClient.invalidateQueries({ queryKey: getListReceiptsQueryKey() });
         queryClient.invalidateQueries({ queryKey: summaryKey });
         setCreateOpen(false);
-        createForm.reset({ clientName: "", serviceType: "", amount: 0, date: new Date().toISOString().split("T")[0], paymentStatus: "Pending", description: "", notes: "" });
+        createForm.reset({ clientName: "", date: new Date().toISOString().split("T")[0], paymentStatus: "Pending", notes: "", items: [{ serviceType: "", description: "", amount: 0 }] });
         setViewReceipt(data as ReceiptRow);
         toast({ title: `Receipt ${(data as ReceiptRow).receiptNumber} generated` });
       },
@@ -294,6 +310,7 @@ export default function Receipts() {
   }
 
   const livePreview = createForm.watch();
+  const itemsTotal = (livePreview.items ?? []).reduce((s, it) => s + (Number(it?.amount) || 0), 0);
 
   const totalAmount = (summary?.amountPaid ?? 0) + (summary?.amountPending ?? 0) + (summary?.amountPartial ?? 0);
 
@@ -423,7 +440,12 @@ export default function Receipts() {
                       <TableCell className="font-mono text-xs text-gray-600 whitespace-nowrap">{r.receiptNumber}</TableCell>
                       <TableCell className="text-sm whitespace-nowrap">{formatDate(r.date)}</TableCell>
                       <TableCell className="font-medium">{r.clientName}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{r.serviceType}</TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {r.serviceType}
+                        {(r.items?.length ?? 0) > 1 && (
+                          <span className="ml-1 text-xs text-gray-400">({r.items!.length})</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-mono font-semibold whitespace-nowrap">{formatKES(r.amount)}</TableCell>
                       <TableCell><StatusBadge status={r.paymentStatus} /></TableCell>
                       <TableCell className="text-xs text-gray-400">{r.createdBy ?? "—"}</TableCell>
@@ -484,7 +506,7 @@ export default function Receipts() {
         onOpenChange={(open) => {
           if (!open) {
             setCreateOpen(false);
-            createForm.reset({ clientName: "", serviceType: "", amount: 0, date: new Date().toISOString().split("T")[0], paymentStatus: "Pending", description: "", notes: "" });
+            createForm.reset({ clientName: "", date: new Date().toISOString().split("T")[0], paymentStatus: "Pending", notes: "", items: [{ serviceType: "", description: "", amount: 0 }] });
           }
         }}
       >
@@ -510,41 +532,74 @@ export default function Receipts() {
                         <FormControl><Input type="date" {...field} /></FormControl>
                       </FormItem>
                     )} />
-                    <FormField control={createForm.control} name="amount" render={({ field }) => (
+                    <FormField control={createForm.control} name="clientName" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amount (KES)</FormLabel>
-                        <FormControl><Input type="number" min="0" step="0.01" {...field} /></FormControl>
+                        <FormLabel>Client Name</FormLabel>
+                        <FormControl><Input placeholder="Client name..." {...field} /></FormControl>
+                        <FormMessage />
                       </FormItem>
                     )} />
                   </div>
 
-                  <FormField control={createForm.control} name="clientName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Client Name</FormLabel>
-                      <FormControl><Input placeholder="Client name..." {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  {/* Service line items */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Services</span>
+                      <Button
+                        type="button" variant="outline" size="sm" className="gap-1 h-8"
+                        onClick={() => itemsArray.append({ serviceType: "", description: "", amount: 0 })}
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add Service
+                      </Button>
+                    </div>
 
-                  <FormField control={createForm.control} name="serviceType" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Service</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select service..." /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                    {itemsArray.fields.map((fieldItem, index) => (
+                      <div key={fieldItem.id} className="rounded-lg border border-gray-200 p-3 space-y-2 relative bg-gray-50/50">
+                        {itemsArray.fields.length > 1 && (
+                          <button
+                            type="button"
+                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                            title="Remove service"
+                            onClick={() => itemsArray.remove(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                        <FormField control={createForm.control} name={`items.${index}.serviceType`} render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Service</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="Select service..." /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <div className="grid grid-cols-2 gap-2">
+                          <FormField control={createForm.control} name={`items.${index}.description`} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Description (optional)</FormLabel>
+                              <FormControl><Input className="bg-white" placeholder="Details..." {...field} /></FormControl>
+                            </FormItem>
+                          )} />
+                          <FormField control={createForm.control} name={`items.${index}.amount`} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Amount (KES)</FormLabel>
+                              <FormControl><Input className="bg-white" type="number" min="0" step="0.01" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </div>
+                      </div>
+                    ))}
 
-                  <FormField control={createForm.control} name="description" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description (optional)</FormLabel>
-                      <FormControl><Input placeholder="Any extra details..." {...field} /></FormControl>
-                    </FormItem>
-                  )} />
+                    <div className="flex justify-between items-center px-1 pt-1 text-sm font-semibold">
+                      <span className="text-gray-500">Total</span>
+                      <span className="font-mono">{formatKES(itemsTotal)}</span>
+                    </div>
+                  </div>
 
                   <FormField control={createForm.control} name="paymentStatus" render={({ field }) => (
                     <FormItem>
@@ -590,9 +645,13 @@ export default function Receipts() {
                   id: 0,
                   receiptNumber: "GSC-RCT-???",
                   clientName: livePreview.clientName,
-                  serviceType: livePreview.serviceType,
-                  description: livePreview.description,
-                  amount: livePreview.amount ?? 0,
+                  serviceType: (livePreview.items?.length ?? 0) > 1 ? "Multiple Services" : (livePreview.items?.[0]?.serviceType ?? ""),
+                  items: (livePreview.items ?? []).map((it) => ({
+                    serviceType: it?.serviceType ?? "",
+                    description: it?.description,
+                    amount: Number(it?.amount) || 0,
+                  })),
+                  amount: itemsTotal,
                   date: livePreview.date,
                   paymentStatus: livePreview.paymentStatus || "Pending",
                   notes: livePreview.notes,

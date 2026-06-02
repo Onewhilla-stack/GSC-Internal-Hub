@@ -46,7 +46,7 @@ Internal business management tool for a cleaning company in Nairobi, Kenya.
 - **Job Tracker** — log cleaning jobs with client, service type, team size, amount; auto-calculates wages and net income
 - **Expense Tracker** — log business expenses by category; CSV import; monthly summary chart
 - **Client Database** — client records with GSC-001 format codes, location, status
-- **Receipt Generator** — generate and print receipts (GSC-RCT-001 format)
+- **Receipt Generator** — generate and print receipts (GSC-RCT-001 format); a single receipt can itemize multiple services (line items), with the total auto-summed and `serviceType` shown as "Multiple Services" when more than one
 - **Analytics** — month-over-month revenue and expense charts via Recharts
 - **Settings** — configure wage rate per person per day, monthly rent
 

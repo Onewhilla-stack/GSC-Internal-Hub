@@ -491,6 +491,11 @@ export const ListReceiptsResponseItem = zod.object({
   "clientName": zod.string(),
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})),
   "amount": zod.number(),
   "date": zod.string().optional(),
   "paymentStatus": zod.string(),
@@ -506,12 +511,17 @@ export const ListReceiptsResponse = zod.array(ListReceiptsResponseItem)
 /**
  * @summary Create a receipt
  */
+
+
+
 export const CreateReceiptBody = zod.object({
   "jobId": zod.number().nullish(),
   "clientName": zod.string(),
+  "items": zod.array(zod.object({
   "serviceType": zod.string(),
   "description": zod.string().optional(),
-  "amount": zod.number(),
+  "amount": zod.number()
+})).min(1),
   "date": zod.string(),
   "paymentStatus": zod.string().optional(),
   "notes": zod.string().optional()
@@ -550,6 +560,11 @@ export const GetReceiptResponse = zod.object({
   "clientName": zod.string(),
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})),
   "amount": zod.number(),
   "date": zod.string().optional(),
   "paymentStatus": zod.string(),
@@ -580,6 +595,11 @@ export const UpdateReceiptResponse = zod.object({
   "clientName": zod.string(),
   "serviceType": zod.string(),
   "description": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})),
   "amount": zod.number(),
   "date": zod.string().optional(),
   "paymentStatus": zod.string(),

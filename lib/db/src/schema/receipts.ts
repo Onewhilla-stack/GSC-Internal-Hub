@@ -1,6 +1,12 @@
-import { pgTable, text, serial, timestamp, integer, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, numeric, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+export interface ReceiptItem {
+  serviceType: string;
+  description?: string | null;
+  amount: number;
+}
 
 export const receiptsTable = pgTable("receipts", {
   id: serial("id").primaryKey(),
@@ -9,6 +15,7 @@ export const receiptsTable = pgTable("receipts", {
   clientName: text("client_name").notNull(),
   serviceType: text("service_type").notNull(),
   description: text("description"),
+  items: jsonb("items").$type<ReceiptItem[]>(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   date: text("date").notNull(),
   paymentStatus: text("payment_status").notNull().default("Pending"),
