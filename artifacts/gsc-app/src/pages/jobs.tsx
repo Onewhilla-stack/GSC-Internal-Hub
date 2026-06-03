@@ -80,6 +80,8 @@ export default function Jobs() {
   const editItemsArray = useFieldArray({ control: editForm.control, name: "items" });
   const editItems = editForm.watch("items") ?? [];
   const isMultiEdit = editItems.length > 0;
+  const editTeamMembers = editForm.watch("teamMembers");
+  const editAmount = editForm.watch("amount");
 
   const createJob = useCreateJob({
     mutation: {
@@ -176,6 +178,12 @@ export default function Jobs() {
   const defaultWageRate = 1000;
   const wages = (teamMembers || 1) * defaultWageRate;
   const netIncome = (amount || 0) - wages;
+
+  const editTotal = isMultiEdit
+    ? editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+    : (Number(editAmount) || 0);
+  const editWages = (Number(editTeamMembers) || 1) * defaultWageRate;
+  const editNetIncome = editTotal - editWages;
 
   function openEdit(job: typeof jobs extends (infer T)[] | undefined ? T : never) {
     const jobItems = job!.items ?? [];
@@ -448,11 +456,22 @@ export default function Jobs() {
                       </Button>
                     </div>
                   ))}
-                  <div className="flex justify-end text-sm font-mono font-semibold text-primary">
-                    Total: {formatKES(editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0))}
-                  </div>
                 </div>
               )}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                  <div className="text-xs text-gray-500">Total</div>
+                  <div className="font-mono text-sm font-semibold text-primary">{formatKES(editTotal)}</div>
+                </div>
+                <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                  <div className="text-xs text-gray-500">Auto Wages</div>
+                  <div className="font-mono text-sm text-red-600">{formatKES(editWages)}</div>
+                </div>
+                <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                  <div className="text-xs text-gray-500">Net Income</div>
+                  <div className="font-mono text-sm text-green-600 font-bold">{formatKES(editNetIncome)}</div>
+                </div>
+              </div>
               <DialogFooter>
                 <Button variant="outline" type="button" onClick={() => setEditJob(null)}>Cancel</Button>
                 <Button type="submit" disabled={updateJob.isPending} className="bg-primary text-white">
