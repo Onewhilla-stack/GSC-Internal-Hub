@@ -16,12 +16,13 @@ import {
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
 import { resolveDateRange } from "../lib/date-range";
+import { resolveWageRate, computeJobMoney } from "../lib/job-money";
 
 const router = Router();
 
 async function getWageRate(): Promise<number> {
   const [setting] = await db.select().from(settingsTable).where(eq(settingsTable.key, "wagePerPersonPerDay"));
-  return setting ? parseFloat(setting.value) : 1000;
+  return resolveWageRate(setting?.value);
 }
 
 type ResolveServicesInput = {
@@ -153,8 +154,7 @@ router.post("/jobs", requireAuth, async (req, res): Promise<void> => {
   }
   const { serviceType, amount, items } = resolved;
 
-  const wages = teamMembers * wageRate;
-  const netIncome = amount - wages;
+  const { wages, netIncome } = computeJobMoney({ teamMembers, wageRate, amount });
   const username = req.session.username!;
 
   // When the caller already references a client, trust it. Otherwise make sure
@@ -217,8 +217,7 @@ router.post("/jobs/import", requireAuth, async (req, res): Promise<void> => {
 
   for (const row of parsed.data.rows) {
     try {
-      const wages = row.teamMembers * wageRate;
-      const netIncome = row.amount - wages;
+      const { wages, netIncome } = computeJobMoney({ teamMembers: row.teamMembers, wageRate, amount: row.amount });
       await db.insert(jobsTable).values({
         clientName: row.clientName,
         date: row.date,
@@ -324,8 +323,7 @@ router.patch("/jobs/:id", requireAuth, requireDirector, async (req, res): Promis
     amount = parsed.data.amount ?? parseFloat(existing[0].amount);
     items = undefined;
   }
-  const wages = teamMembers * wageRate;
-  const netIncome = amount - wages;
+  const { wages, netIncome } = computeJobMoney({ teamMembers, wageRate, amount });
 
   const [row] = await db.update(jobsTable).set({
     clientId: parsed.data.clientId,
