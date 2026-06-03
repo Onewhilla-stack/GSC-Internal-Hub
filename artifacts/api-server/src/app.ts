@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import path from "path";
 import cors from "cors";
 import { pinoHttp } from "pino-http";
 import session from "express-session";
@@ -51,11 +52,21 @@ app.use(
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   }),
 );
 
 app.use("/api", router);
+
+// In production (Render), serve the built frontend and handle SPA routing
+if (process.env.NODE_ENV === "production") {
+  const staticDir = path.resolve(process.cwd(), "artifacts/gsc-app/dist/public");
+  app.use(express.static(staticDir));
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(staticDir, "index.html"));
+  });
+}
 
 export default app;
