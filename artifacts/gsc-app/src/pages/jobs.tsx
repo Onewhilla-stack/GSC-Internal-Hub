@@ -148,6 +148,15 @@ export default function Jobs() {
     }
   });
 
+  function updatePreviewRow(idx: number, patch: Partial<ImportRow>) {
+    setImportPreview((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...patch };
+      return next;
+    });
+  }
+
   function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -616,13 +625,43 @@ export default function Jobs() {
               <TableBody>
                 {previewRows.map((r, i) => (
                   <TableRow key={i}>
-                    <TableCell>{formatDate(r.date)}</TableCell>
-                    <TableCell className="font-medium">{r.clientName}</TableCell>
-                    <TableCell>{r.serviceType}</TableCell>
-                    <TableCell className="text-center">{r.teamMembers}</TableCell>
-                    {isDirector && <TableCell className="text-right font-mono">{formatKES(r.amount)}</TableCell>}
-                    {isDirector && <TableCell className="text-right font-mono text-red-600">{formatKES(r.wages)}</TableCell>}
-                    {isDirector && <TableCell className="text-right font-mono font-bold text-green-600">{formatKES(r.netIncome)}</TableCell>}
+                    <TableCell className="text-sm">{formatDate(r.date)}</TableCell>
+                    <TableCell className="font-medium text-sm">{r.clientName}</TableCell>
+                    <TableCell className="min-w-[150px]">
+                      <Select
+                        value={r.serviceType}
+                        onValueChange={(val) => updatePreviewRow(i, { serviceType: val })}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Input
+                        type="number"
+                        min="0"
+                        className="h-8 w-16 text-center text-xs"
+                        value={r.teamMembers}
+                        onChange={(e) => updatePreviewRow(i, { teamMembers: parseInt(e.target.value, 10) || 0 })}
+                      />
+                    </TableCell>
+                    {isDirector && (
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          className="h-8 w-28 text-right text-xs font-mono"
+                          value={r.amount}
+                          onChange={(e) => updatePreviewRow(i, { amount: parseFloat(e.target.value) || 0 })}
+                        />
+                      </TableCell>
+                    )}
+                    {isDirector && <TableCell className="text-right font-mono text-sm text-red-600">{formatKES(r.wages)}</TableCell>}
+                    {isDirector && <TableCell className="text-right font-mono text-sm font-bold text-green-600">{formatKES(r.netIncome)}</TableCell>}
                   </TableRow>
                 ))}
               </TableBody>
