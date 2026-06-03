@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, getListJobsQueryKey } from "@workspace/api-client-react";
+import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, useGetSettings, getListJobsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
@@ -177,16 +177,18 @@ export default function Jobs() {
     e.target.value = "";
   }
 
+  const { data: settings } = useGetSettings();
+  const wageRate = settings?.wagePerPersonPerDay ?? 1000;
+
   const amount = form.watch("amount");
   const teamMembers = form.watch("teamMembers");
-  const defaultWageRate = 1000;
-  const wages = (teamMembers || 1) * defaultWageRate;
+  const wages = (teamMembers || 1) * wageRate;
   const netIncome = (amount || 0) - wages;
 
   const editTotal = isMultiEdit
     ? editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
     : (Number(editAmount) || 0);
-  const editWages = (Number(editTeamMembers) || 1) * defaultWageRate;
+  const editWages = (Number(editTeamMembers) || 1) * wageRate;
   const editNetIncome = editTotal - editWages;
 
   function openEdit(job: typeof jobs extends (infer T)[] | undefined ? T : never) {
