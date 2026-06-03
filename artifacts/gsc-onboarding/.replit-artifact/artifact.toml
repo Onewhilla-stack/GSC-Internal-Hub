@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/gsc-onboarding/"
+title = "GSC Team Onboarding"
+version = "1.0.0"
+id = "artifacts/gsc-onboarding"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/gsc-onboarding/" ]
+localPort = 20162
+
+[services.development]
+run = "pnpm --filter @workspace/gsc-onboarding run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/gsc-onboarding", "run", "build" ]
+publicDir = "artifacts/gsc-onboarding/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20162"
+BASE_PATH = "/gsc-onboarding/"
