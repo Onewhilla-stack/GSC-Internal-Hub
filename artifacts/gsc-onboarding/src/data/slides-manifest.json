@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567801",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide01Cover.tsx",
+    "title": "Cover",
+    "description": "GSC Team Onboarding — gold standard cleaners internal system",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567802",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide02WhatIsThis.tsx",
+    "title": "What Is The Hub?",
+    "description": "Overview of the 7 modules in the GSC internal management platform",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567803",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide03Login.tsx",
+    "title": "Login & User Roles",
+    "description": "Director and Worker roles — credentials, permissions, and access levels",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567804",
+    "position": 4,
+    "filepath": "src/pages/slides/Slide04Dashboard.tsx",
+    "title": "The Dashboard",
+    "description": "Live KPI metrics — revenue, expenses, net income, top clients",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567805",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide05JobTracker.tsx",
+    "title": "Job Tracker",
+    "description": "Logging cleaning jobs — fields, wage auto-calculation, net income",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567806",
+    "position": 6,
+    "filepath": "src/pages/slides/Slide06Clients.tsx",
+    "title": "Client Database & Receipts",
+    "description": "Client registry with GSC codes and print-ready receipt generator",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567807",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide07Expenses.tsx",
+    "title": "Expenses & Analytics",
+    "description": "Expense tracking by category, CSV import, and monthly trend charts",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567808",
+    "position": 8,
+    "filepath": "src/pages/slides/Slide08Settings.tsx",
+    "title": "System Settings",
+    "description": "Configurable wage rate and monthly rent — directors only",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567809",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide09GetStarted.tsx",
+    "title": "Get Started",
+    "description": "Day one checklist — login steps, credentials, first actions",
+    "speakerNotes": ""
+  }
+]
