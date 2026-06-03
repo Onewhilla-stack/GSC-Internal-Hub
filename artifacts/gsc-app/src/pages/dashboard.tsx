@@ -176,7 +176,7 @@ function WorkerDashboard({ username }: { username: string }) {
   const todayStr = new Date().toISOString().split("T")[0];
   const todayJobs = jobs?.filter(j => j.date === todayStr) ?? [];
 
-  function generateReceipt(job: { id: number; clientName: string; date: string; serviceType: string; amount: number; items?: { serviceType: string; description?: string | null; amount: number }[] | null }) {
+  function generateReceipt(job: { id: number; clientName: string; date: string; serviceType: string; description?: string | null; amount: number; items?: { serviceType: string; description?: string | null; amount: number }[] | null }) {
     const params = new URLSearchParams({
       client: job.clientName,
       date: job.date.split("T")[0],
@@ -185,8 +185,9 @@ function WorkerDashboard({ username }: { username: string }) {
     if (job.items && job.items.length > 0) {
       params.set("items", JSON.stringify(job.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))));
     } else {
-      params.set("service", job.serviceType);
-      params.set("amount", String(job.amount));
+      // Single-service job: description lives on the job itself, so carry it
+      // through as a one-item list or the generated receipt loses the details.
+      params.set("items", JSON.stringify([{ serviceType: job.serviceType, description: job.description ?? "", amount: job.amount }]));
     }
     navigate(`/receipts?${params.toString()}`);
   }

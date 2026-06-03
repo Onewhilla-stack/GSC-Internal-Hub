@@ -1,4 +1,5 @@
 - [Session table setup](session-table.md) — connect-pg-simple's createTableIfMissing fails when bundled by esbuild; create table manually via SQL instead.
 - [Role system & users](role-system.md) — role ("director"/"worker") in session + DB users table; requireDirector guards edit/delete/expenses/audit-log. 3 users (2 director, 1 associate/worker); query users table for current usernames. Usernames/passwords are user-managed — don't assume seed creds; create a temp bcryptjs user to test, then clean up.
 - [TanStack Query v5 inline options](tanstack-query-v5-quirk.md) — UseQueryOptions requires queryKey when passed inline; always import and include the query key getter alongside retry/enabled options
+- [wouter query params](wouter-query-params.md) — useLocation() returns path only (no ?query); use useSearch() to read query strings for prefill/deep links
 - [Multi-service job edit contract](multi-service-job-contract.md) — PATCH /jobs: items array=multi, omitted=keep stored, null=collapse to single; wages charged once regardless of item count

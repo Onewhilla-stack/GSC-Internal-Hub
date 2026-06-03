@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useSearch } from "wouter";
 import {
   useListReceipts,
   useCreateReceipt,
@@ -214,7 +214,7 @@ export default function Receipts() {
   const { isDirector } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [location] = useLocation();
+  const rawSearch = useSearch();
 
   const { from, to } = useDateRange();
   const [search, setSearch] = useState("");
@@ -223,8 +223,9 @@ export default function Receipts() {
   const [viewReceipt, setViewReceipt] = useState<ReceiptRow | null>(null);
   const [editReceipt, setEditReceipt] = useState<ReceiptRow | null>(null);
 
-  // Parse URL params for pre-fill (from Jobs page "Generate Receipt" button)
-  const rawSearch = location.includes("?") ? location.split("?")[1] : "";
+  // Parse URL params for pre-fill (from Jobs page "Generate Receipt" button).
+  // wouter's useSearch() returns the query string (without the leading "?");
+  // useLocation() returns only the pathname, so it can't be used here.
   const urlParams = new URLSearchParams(rawSearch);
   const prefillClient = urlParams.get("client") ?? "";
   const prefillService = urlParams.get("service") ?? "";

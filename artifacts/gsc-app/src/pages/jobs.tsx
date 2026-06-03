@@ -374,8 +374,10 @@ export default function Jobs() {
                           if (job.items && job.items.length > 0) {
                             params.set("items", JSON.stringify(job.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))));
                           } else {
-                            params.set("service", job.serviceType);
-                            params.set("amount", String(job.amount));
+                            // Single-service job: description lives on the job itself,
+                            // so carry it through as a one-item list (not service/amount
+                            // alone) or the receipt loses the details.
+                            params.set("items", JSON.stringify([{ serviceType: job.serviceType, description: job.description ?? "", amount: job.amount }]));
                           }
                           navigate(`/receipts?${params.toString()}`);
                         }}
