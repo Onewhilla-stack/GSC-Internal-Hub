@@ -283,7 +283,7 @@ export const UpdateJobBody = zod.object({
   "serviceType": zod.string(),
   "description": zod.string().optional(),
   "amount": zod.number().min(updateJobBodyItemsItemAmountMin)
-})).min(1).optional(),
+})).min(1).nullish(),
   "amount": zod.number().min(updateJobBodyAmountMin).optional(),
   "teamMembers": zod.number().optional(),
   "notes": zod.string().nullish()

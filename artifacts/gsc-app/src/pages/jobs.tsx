@@ -191,12 +191,28 @@ export default function Jobs() {
     setEditJob({ id: job!.id });
   }
 
+  function convertToMulti() {
+    const cur = editForm.getValues();
+    editItemsArray.replace([
+      { serviceType: cur.serviceType || "", amount: Number(cur.amount) || 0 },
+      { serviceType: "", amount: 0 },
+    ]);
+  }
+
+  function collapseToSingle() {
+    const only = (editForm.getValues("items") ?? [])[0];
+    editForm.setValue("serviceType", only?.serviceType ?? "");
+    editForm.setValue("amount", Number(only?.amount) || 0);
+    editItemsArray.replace([]);
+  }
+
   function submitEdit(data: EditJobFormData) {
     const { items, serviceType, amount, ...rest } = data;
     if (items && items.length > 0) {
       updateJob.mutate({ id: editJob!.id, data: { ...rest, items } });
     } else {
-      updateJob.mutate({ id: editJob!.id, data: { ...rest, serviceType, amount } });
+      // Explicit null clears any stored line items, collapsing back to a single service.
+      updateJob.mutate({ id: editJob!.id, data: { ...rest, serviceType, amount, items: null } });
     }
   }
 
@@ -393,13 +409,25 @@ export default function Jobs() {
                   )} />
                 )}
               </div>
+              {!isMultiEdit && (
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={convertToMulti}>
+                  <Plus className="h-3.5 w-3.5" /> Add another service
+                </Button>
+              )}
               {isMultiEdit && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-700">Services</span>
-                    <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => editItemsArray.append({ serviceType: "", amount: 0 })}>
-                      <Plus className="h-3.5 w-3.5" /> Add service
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {editItemsArray.fields.length === 1 && (
+                        <Button type="button" variant="ghost" size="sm" className="text-primary" onClick={collapseToSingle}>
+                          Switch to single service
+                        </Button>
+                      )}
+                      <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => editItemsArray.append({ serviceType: "", amount: 0 })}>
+                        <Plus className="h-3.5 w-3.5" /> Add service
+                      </Button>
+                    </div>
                   </div>
                   {editItemsArray.fields.map((f, idx) => (
                     <div key={f.id} className="flex items-end gap-3">

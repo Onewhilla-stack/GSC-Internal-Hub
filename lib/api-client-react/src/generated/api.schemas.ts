@@ -114,8 +114,11 @@ export interface JobUpdate {
   description?: string | null;
   /** @nullable */
   location?: string | null;
-  /** @minItems 1 */
-  items?: JobItemInput[];
+  /**
+     * @minItems 1
+     * @nullable
+     */
+  items?: JobItemInput[] | null;
   /** @minimum 0 */
   amount?: number;
   teamMembers?: number;

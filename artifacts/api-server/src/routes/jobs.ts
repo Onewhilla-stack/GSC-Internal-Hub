@@ -224,7 +224,13 @@ router.patch("/jobs/:id", requireAuth, requireDirector, async (req, res): Promis
   let serviceType: string | undefined;
   let amount: number;
   let items: JobItem[] | null | undefined;
-  if (parsed.data.items !== undefined) {
+  if (parsed.data.items === null) {
+    // Explicit collapse from multi-service back to a single service: clear the
+    // stored items and use the supplied serviceType/amount (or existing values).
+    serviceType = parsed.data.serviceType ?? existing[0].serviceType;
+    amount = parsed.data.amount ?? parseFloat(existing[0].amount);
+    items = null;
+  } else if (parsed.data.items !== undefined) {
     const r = resolveJobServices({ items: parsed.data.items });
     if (!r.ok) {
       res.status(400).json({ error: r.error });

@@ -1,3 +1,4 @@
 - [Session table setup](session-table.md) — connect-pg-simple's createTableIfMissing fails when bundled by esbuild; create table manually via SQL instead.
 - [Role system & users](role-system.md) — 3 users: director1/director2 (gsc2026, director), worker (gsc0000, worker); role stored in session + DB; requireDirector middleware guards edit/delete/expenses/audit-log
 - [TanStack Query v5 inline options](tanstack-query-v5-quirk.md) — UseQueryOptions requires queryKey when passed inline; always import and include the query key getter alongside retry/enabled options
+- [Multi-service job edit contract](multi-service-job-contract.md) — PATCH /jobs: items array=multi, omitted=keep stored, null=collapse to single; wages charged once regardless of item count

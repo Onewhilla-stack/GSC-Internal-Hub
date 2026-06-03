@@ -1089,7 +1089,7 @@ components:
         description: { type: ["string", "null"] }
         location: { type: ["string", "null"] }
         items:
-          type: array
+          type: ["array", "null"]
           minItems: 1
           items: { $ref: "#/components/schemas/JobItemInput" }
         amount: { type: number, minimum: 0 }
