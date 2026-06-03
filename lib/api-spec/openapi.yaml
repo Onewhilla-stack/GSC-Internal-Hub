@@ -1103,6 +1103,9 @@ components:
         amount: { type: number, minimum: 0 }
         teamMembers: { type: integer }
         notes: { type: ["string", "null"] }
+        syncReceipts:
+          type: boolean
+          description: When true, mirror the job's resolved services onto any receipt linked via jobId.
 
     JobImport:
       type: object

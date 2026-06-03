@@ -130,6 +130,8 @@ export interface JobUpdate {
   teamMembers?: number;
   /** @nullable */
   notes?: string | null;
+  /** When true, mirror the job's resolved services onto any receipt linked via jobId. */
+  syncReceipts?: boolean;
 }
 
 export interface JobImportRow {

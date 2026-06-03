@@ -6,8 +6,10 @@ import {
   useUpdateReceipt,
   useDeleteReceipt,
   useGetReceiptsSummary,
+  useGetJob,
   getListReceiptsQueryKey,
   getGetReceiptsSummaryQueryKey,
+  getGetJobQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
@@ -89,6 +91,31 @@ const SERVICES = [
   "General Cleaning", "Other",
 ];
 const STATUSES = ["Paid", "Pending", "Partial"];
+
+// Reduce a job or receipt down to a comparable list of services. A single-service
+// job keeps its details on the job itself, so it is mirrored as a one-item list
+// (the same shape a receipt always stores).
+type CanonicalService = { serviceType: string; description: string; amount: number };
+
+function jobToServices(job: { serviceType: string; description?: string | null; amount: number; items?: ReceiptItem[] | null }): CanonicalService[] {
+  if (job.items && job.items.length > 0) {
+    return job.items.map((it) => ({ serviceType: it.serviceType, description: it.description ?? "", amount: Number(it.amount) || 0 }));
+  }
+  return [{ serviceType: job.serviceType, description: job.description ?? "", amount: Number(job.amount) || 0 }];
+}
+
+function receiptToServices(items: ReceiptItem[]): CanonicalService[] {
+  return items.map((it) => ({ serviceType: it.serviceType, description: it.description ?? "", amount: Number(it.amount) || 0 }));
+}
+
+function servicesEqual(a: CanonicalService[], b: CanonicalService[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((it, i) =>
+    it.serviceType === b[i].serviceType &&
+    it.description === b[i].description &&
+    Math.abs(it.amount - b[i].amount) < 0.005
+  );
+}
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
@@ -285,6 +312,35 @@ export default function Receipts() {
   const editItemsArray = useFieldArray({ control: editForm.control, name: "items" });
   const editItems = editForm.watch("items") ?? [];
   const isMultiEdit = editItems.length > 0;
+
+  // When a receipt was generated from a job, load that job so we can flag when the
+  // two have drifted apart and let the director pull the latest services back in.
+  const sourceJobId = editReceipt?.jobId ?? null;
+  const { data: sourceJob } = useGetJob(sourceJobId ?? 0, {
+    query: {
+      queryKey: getGetJobQueryKey(sourceJobId ?? 0),
+      enabled: !!editReceipt && sourceJobId != null,
+    },
+  });
+  const jobServices = sourceJob ? jobToServices(sourceJob) : null;
+  const receiptDiffersFromJob =
+    !!jobServices && !!editReceipt && !servicesEqual(jobServices, receiptToServices(editReceipt.items ?? []));
+
+  function pullFromJob() {
+    if (!jobServices) return;
+    if (jobServices.length > 1) {
+      editForm.setValue("serviceType", "");
+      editForm.setValue("description", "");
+      editForm.setValue("amount", 0);
+      editItemsArray.replace(jobServices.map((it) => ({ serviceType: it.serviceType, description: it.description, amount: it.amount })));
+    } else {
+      const only = jobServices[0];
+      editForm.setValue("serviceType", only.serviceType);
+      editForm.setValue("description", only.description);
+      editForm.setValue("amount", only.amount);
+      editItemsArray.replace([]);
+    }
+  }
   const editSingleAmount = editForm.watch("amount");
   const editTotal = isMultiEdit
     ? editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
@@ -789,6 +845,25 @@ export default function Receipts() {
               onSubmit={editForm.handleSubmit(submitEdit)}
               className="space-y-4"
             >
+              {/* Drift warning — this receipt no longer matches its source job */}
+              {isDirector && receiptDiffersFromJob && (
+                <div className="rounded-md border border-orange-300 bg-orange-50 p-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-orange-800 font-medium">This receipt no longer matches its source job.</p>
+                      <p className="text-orange-700 mt-0.5">
+                        The job now totals {formatKES((jobServices ?? []).reduce((s, it) => s + it.amount, 0))}
+                        {" "}across {jobServices?.length} service{(jobServices?.length ?? 0) > 1 ? "s" : ""}.
+                      </p>
+                      <Button type="button" variant="outline" size="sm" className="mt-2 h-8 border-orange-400 text-orange-700 hover:bg-orange-100" onClick={pullFromJob}>
+                        Pull latest from job
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Services — directors only */}
               {isDirector && (
                 <div className="rounded-lg border border-gray-200 p-3 space-y-3 bg-gray-50/50">

@@ -26,6 +26,15 @@ array. The edit UI mirrors the job convert/collapse UX but always sends `items`.
 receipt's services is director-only (guarded inside the handler by `req.session.role`), while
 status/notes-only edits stay open to workers.
 
+**Job↔receipt sync:** receipts link to a job via `jobId`. PATCH /jobs accepts a `syncReceipts`
+flag; when true, every receipt with that jobId is rewritten to mirror the job's resolved
+services (items, total, "Multiple Services"/single label) the same way receipt-create derives
+them (single-service job → one-item list). Jobs page only sends the flag when a linked receipt
+exists (it loads all receipts to detect this) and the director leaves the offer checked. The
+receipt edit dialog fetches the source job and shows a drift banner + "Pull latest from job"
+when services no longer match. Sync is one-directional (job→receipt); editing a receipt does NOT
+push back to the job, so they can still diverge — hence the banner.
+
 **How to apply:** the OpenAPI `JobUpdate.items` is `type: ["array","null"]` so the generated
 zod accepts null. Frontend edit dialog (`artifacts/gsc-app/src/pages/jobs.tsx`) sends
 `items: null` when collapsing; multi mode is driven by `editItems.length > 0`. Wages are always

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, jobsTable, clientsTable, settingsTable, activityLogTable } from "@workspace/db";
+import { db, jobsTable, clientsTable, settingsTable, activityLogTable, receiptsTable } from "@workspace/db";
 import type { JobItem } from "@workspace/db";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { generateClientCode } from "../lib/client-code";
@@ -345,6 +345,33 @@ router.patch("/jobs/:id", requireAuth, requireDirector, async (req, res): Promis
   }).where(eq(jobsTable.id, params.data.id)).returning();
 
   await logActivity(username, "Edited", "Job", row.id, `${row.serviceType} for ${row.clientName} on ${row.date}`);
+
+  // Keep receipts generated from this visit in sync with its services. A receipt
+  // always stores an items array, so a single-service job is mirrored as a
+  // one-item list; the total and the "Multiple Services" label are derived the
+  // same way as receipt creation so the two never silently drift apart.
+  if (parsed.data.syncReceipts) {
+    const linked = await db.select().from(receiptsTable).where(eq(receiptsTable.jobId, params.data.id));
+    if (linked.length > 0) {
+      const receiptItems = row.items && row.items.length > 0
+        ? row.items.map((it) => ({ serviceType: it.serviceType, description: it.description ?? null, amount: it.amount }))
+        : [{ serviceType: row.serviceType, description: row.description, amount: parseFloat(row.amount) }];
+      const receiptTotal = receiptItems.reduce((s, it) => s + it.amount, 0);
+      const receiptServiceType = receiptItems.length === 1 ? receiptItems[0].serviceType : "Multiple Services";
+
+      for (const rec of linked) {
+        await db.update(receiptsTable).set({
+          items: receiptItems,
+          serviceType: receiptServiceType,
+          description: null,
+          amount: receiptTotal.toFixed(2),
+          lastEditedBy: username,
+          lastEditedAt: new Date(),
+        }).where(eq(receiptsTable.id, rec.id));
+        await logActivity(username, "Edited", "Receipt", rec.id, `${rec.receiptNumber} — synced to job services (KES ${receiptTotal.toFixed(2)})`);
+      }
+    }
+  }
 
   res.json({ ...row, amount: parseFloat(row.amount), wages: parseFloat(row.wages), netIncome: parseFloat(row.netIncome), lastEditedAt: row.lastEditedAt?.toISOString() ?? null });
 });

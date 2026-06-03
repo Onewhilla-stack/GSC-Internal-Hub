@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
-import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, useGetSettings, getListJobsQueryKey } from "@workspace/api-client-react";
+import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, useGetSettings, useListReceipts, getListJobsQueryKey, getListReceiptsQueryKey, getGetReceiptsSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
 import { useForm, useFieldArray } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -62,8 +63,19 @@ export default function Jobs() {
   const [, navigate] = useLocation();
   const { from, to } = useDateRange();
   const [editJob, setEditJob] = useState<{ id: number } | null>(null);
+  const [syncReceipts, setSyncReceipts] = useState(true);
   const { data: jobs, isLoading } = useListJobs({ from, to });
   const jobsKey = getListJobsQueryKey({ from, to });
+
+  // Receipts can be generated from a job and carry its jobId. We load them so the
+  // edit dialog can offer to keep a linked receipt in sync when services change.
+  const { data: allReceipts } = useListReceipts({});
+  const linkedReceipts = (allReceipts ?? []).filter((r) => r.jobId === editJob?.id);
+
+  function invalidateReceipts() {
+    queryClient.invalidateQueries({ queryKey: getListReceiptsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetReceiptsSummaryQueryKey() });
+  }
 
   const form = useForm<JobFormData>({
     resolver: zodResolver(jobSchema),
@@ -101,10 +113,12 @@ export default function Jobs() {
 
   const updateJob = useUpdateJob({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_data, vars) => {
         queryClient.invalidateQueries({ queryKey: jobsKey });
+        const synced = !!(vars?.data as { syncReceipts?: boolean } | undefined)?.syncReceipts;
+        if (synced) invalidateReceipts();
         setEditJob(null);
-        toast({ title: "Job updated" });
+        toast({ title: synced ? "Job updated — linked receipt synced" : "Job updated" });
       }
     }
   });
@@ -205,6 +219,7 @@ export default function Jobs() {
       description: job!.description ?? "",
       items: jobItems.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount })),
     });
+    setSyncReceipts(true);
     setEditJob({ id: job!.id });
   }
 
@@ -226,11 +241,14 @@ export default function Jobs() {
 
   function submitEdit(data: EditJobFormData) {
     const { items, serviceType, amount, ...rest } = data;
+    // Only ask the API to sync receipts when this job actually has a linked one
+    // and the director left the offer checked.
+    const sync = linkedReceipts.length > 0 && syncReceipts;
     if (items && items.length > 0) {
-      updateJob.mutate({ id: editJob!.id, data: { ...rest, items } });
+      updateJob.mutate({ id: editJob!.id, data: { ...rest, items, syncReceipts: sync } });
     } else {
       // Explicit null clears any stored line items, collapsing back to a single service.
-      updateJob.mutate({ id: editJob!.id, data: { ...rest, serviceType, amount, items: null } });
+      updateJob.mutate({ id: editJob!.id, data: { ...rest, serviceType, amount, items: null, syncReceipts: sync } });
     }
   }
 
@@ -498,6 +516,23 @@ export default function Jobs() {
                   <div className="font-mono text-sm text-green-600 font-bold">{formatKES(editNetIncome)}</div>
                 </div>
               </div>
+              {linkedReceipts.length > 0 && (
+                <label className="flex items-start gap-2 rounded-md border border-secondary/40 bg-secondary/10 p-3 cursor-pointer">
+                  <Checkbox
+                    checked={syncReceipts}
+                    onCheckedChange={(c) => setSyncReceipts(c === true)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Also update the receipt{linkedReceipts.length > 1 ? "s" : ""} generated from this job
+                    {" "}
+                    <span className="font-mono text-xs text-gray-500">
+                      ({linkedReceipts.map((r) => r.receiptNumber).join(", ")})
+                    </span>{" "}
+                    so the total and services match.
+                  </span>
+                </label>
+              )}
               <DialogFooter>
                 <Button variant="outline" type="button" onClick={() => setEditJob(null)}>Cancel</Button>
                 <Button type="submit" disabled={updateJob.isPending} className="bg-primary text-white">

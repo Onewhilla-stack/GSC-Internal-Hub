@@ -287,7 +287,8 @@ export const UpdateJobBody = zod.object({
 })).min(1).nullish(),
   "amount": zod.number().min(updateJobBodyAmountMin).optional(),
   "teamMembers": zod.number().optional(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "syncReceipts": zod.boolean().optional().describe('When true, mirror the job\'s resolved services onto any receipt linked via jobId.')
 })
 
 export const UpdateJobResponse = zod.object({
