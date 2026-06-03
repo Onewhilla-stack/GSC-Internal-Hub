@@ -42,6 +42,7 @@ export default function Analytics() {
     return Array.from(map, ([serviceType, revenue]) => ({ serviceType, revenue })).sort((a, b) => b.revenue - a.revenue);
   }, [monthDrill]);
   const expBreakdown = monthDrill?.expenseBreakdown ?? [];
+  const serviceCounts = keyStats?.serviceCounts ?? [];
 
   return (
     <div className="space-y-6">
@@ -110,6 +111,31 @@ export default function Analytics() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-sm border-t-4 border-t-secondary">
+        <CardHeader>
+          <CardTitle>Most Popular Services (All Time)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {statsLoading ? (
+            <div className="flex justify-center h-24 items-center"><Spinner /></div>
+          ) : serviceCounts.length > 0 ? (
+            <div style={{ height: Math.max(serviceCounts.length * 44, 120) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={serviceCounts} layout="vertical" margin={{ left: 40, right: 24 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
+                  <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{fontSize: 12}} />
+                  <YAxis dataKey="serviceType" type="category" tickLine={false} axisLine={false} tick={{fontSize: 12}} width={120} />
+                  <Tooltip formatter={(val: number) => [`${val} ${val === 1 ? "time" : "times"}`, "Performed"]} />
+                  <Bar dataKey="count" fill="#29ABE2" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex items-center text-gray-500 h-24">No jobs recorded yet</div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="pt-6 border-t-2 border-gray-200">
         <div className="flex items-center justify-between mb-6">

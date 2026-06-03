@@ -1015,6 +1015,13 @@ components:
         serviceType: { type: string }
         revenue: { type: number }
 
+    ServiceCount:
+      type: object
+      required: [serviceType, count]
+      properties:
+        serviceType: { type: string }
+        count: { type: integer }
+
     TopClient:
       type: object
       required: [clientName, totalSpent, jobCount]
@@ -1371,7 +1378,7 @@ components:
 
     KeyStats:
       type: object
-      required: [bestMonthByRevenue, bestMonthByProfit, mostPopularService, topClientAllTime, avgRevenuePerJob, avgMonthlyProfit]
+      required: [bestMonthByRevenue, bestMonthByProfit, mostPopularService, topClientAllTime, avgRevenuePerJob, avgMonthlyProfit, serviceCounts]
       properties:
         bestMonthByRevenue: { type: string }
         bestMonthByProfit: { type: string }
@@ -1379,6 +1386,10 @@ components:
         topClientAllTime: { type: string }
         avgRevenuePerJob: { type: number }
         avgMonthlyProfit: { type: number }
+        serviceCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceCount"
 
     MonthDrill:
       type: object

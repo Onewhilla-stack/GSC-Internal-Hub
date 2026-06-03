@@ -5,6 +5,7 @@
  * Gold Standard Cleaners internal management API
  * OpenAPI spec version: 0.1.0
  */
+import type { ServiceCount } from './serviceCount';
 
 export interface KeyStats {
   bestMonthByRevenue: string;
@@ -13,4 +14,5 @@ export interface KeyStats {
   topClientAllTime: string;
   avgRevenuePerJob: number;
   avgMonthlyProfit: number;
+  serviceCounts: ServiceCount[];
 }

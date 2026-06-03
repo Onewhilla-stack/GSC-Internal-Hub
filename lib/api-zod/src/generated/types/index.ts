@@ -58,6 +58,7 @@ export * from './receiptItem';
 export * from './receiptItemInput';
 export * from './receiptsSummary';
 export * from './receiptUpdate';
+export * from './serviceCount';
 export * from './serviceRevenue';
 export * from './settings';
 export * from './settingsUpdate';

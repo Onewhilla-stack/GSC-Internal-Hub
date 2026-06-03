@@ -764,7 +764,11 @@ export const GetKeyStatsResponse = zod.object({
   "mostPopularService": zod.string(),
   "topClientAllTime": zod.string(),
   "avgRevenuePerJob": zod.number(),
-  "avgMonthlyProfit": zod.number()
+  "avgMonthlyProfit": zod.number(),
+  "serviceCounts": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "count": zod.number()
+}))
 })
 
 

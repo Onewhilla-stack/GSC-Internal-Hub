@@ -46,6 +46,11 @@ export interface ServiceRevenue {
   revenue: number;
 }
 
+export interface ServiceCount {
+  serviceType: string;
+  count: number;
+}
+
 export interface TopClient {
   clientName: string;
   totalSpent: number;
@@ -358,6 +363,7 @@ export interface KeyStats {
   topClientAllTime: string;
   avgRevenuePerJob: number;
   avgMonthlyProfit: number;
+  serviceCounts: ServiceCount[];
 }
 
 export interface MonthDrill {

@@ -130,6 +130,7 @@ router.get("/analytics/key-stats", requireAuth, async (req, res): Promise<void> 
     topClientAllTime: topClientRow[0]?.clientName ?? "-",
     avgRevenuePerJob: parseFloat(avgJob[0]?.avg ?? "0"),
     avgMonthlyProfit: Math.round(avgMonthlyProfit * 100) / 100,
+    serviceCounts,
   });
 });
 
