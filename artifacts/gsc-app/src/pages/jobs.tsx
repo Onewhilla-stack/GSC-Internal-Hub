@@ -380,23 +380,35 @@ export default function Jobs() {
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(job)} title="Edit job">
                             <Pencil className="h-3.5 w-3.5 text-primary" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this job?</AlertDialogTitle>
-                                <AlertDialogDescription>This cannot be undone. The job for {job.clientName} on {formatDate(job.date)} will be permanently removed.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => deleteJob.mutate({ id: job.id })}>Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          {(() => {
+                            const jobReceipts = (allReceipts ?? []).filter((r) => r.jobId === job.id);
+                            return (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+                                    <AlertDialogDescription>This cannot be undone. The job for {job.clientName} on {formatDate(job.date)} will be permanently removed.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  {jobReceipts.length > 0 && (
+                                    <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+                                      This job has {jobReceipts.length} linked receipt{jobReceipts.length > 1 ? "s" : ""}{" "}
+                                      <span className="font-mono text-xs">({jobReceipts.map((r) => r.receiptNumber).join(", ")})</span>.
+                                      {" "}The receipt{jobReceipts.length > 1 ? "s" : ""} will be kept but no longer linked to this job.
+                                    </div>
+                                  )}
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => deleteJob.mutate({ id: job.id })}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                     )}

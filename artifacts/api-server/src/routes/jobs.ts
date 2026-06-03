@@ -387,7 +387,21 @@ router.delete("/jobs/:id", requireAuth, requireDirector, async (req, res): Promi
     return;
   }
 
-  await logActivity(req.session.username!, "Deleted", "Job", params.data.id, `${row.serviceType} for ${row.clientName} on ${row.date}`);
+  const username = req.session.username!;
+
+  // Receipts generated from this visit point back at it via jobId. Deleting the
+  // job would leave them with a dangling reference (a 404 source job), so clear
+  // the link instead of orphaning it — the receipt itself is kept intact.
+  const unlinked = await db.update(receiptsTable)
+    .set({ jobId: null })
+    .where(eq(receiptsTable.jobId, params.data.id))
+    .returning();
+
+  await logActivity(username, "Deleted", "Job", params.data.id, `${row.serviceType} for ${row.clientName} on ${row.date}`);
+
+  for (const rec of unlinked) {
+    await logActivity(username, "Edited", "Receipt", rec.id, `${rec.receiptNumber} — unlinked from deleted job`);
+  }
 
   res.sendStatus(204);
 });
