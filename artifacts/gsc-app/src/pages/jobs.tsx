@@ -29,6 +29,7 @@ const jobSchema = z.object({
   date: z.string().min(1, "Date required"),
   clientName: z.string().min(1, "Client name required"),
   serviceType: z.string().min(1, "Service required"),
+  description: z.string().optional(),
   location: z.string().optional(),
   amount: z.coerce.number().min(0, "Invalid amount"),
   teamMembers: z.coerce.number().min(1, "At least 1 member"),
@@ -42,9 +43,11 @@ const editJobSchema = z.object({
   location: z.string().optional(),
   teamMembers: z.coerce.number().min(1, "At least 1 member"),
   serviceType: z.string().optional(),
+  description: z.string().optional(),
   amount: z.coerce.number().min(0).optional(),
   items: z.array(z.object({
     serviceType: z.string().min(1, "Service required"),
+    description: z.string().optional(),
     amount: z.coerce.number().min(0),
   })).optional(),
 });
@@ -67,6 +70,7 @@ export default function Jobs() {
       date: new Date().toISOString().split('T')[0],
       clientName: "",
       serviceType: "",
+      description: "",
       location: "",
       amount: 0,
       teamMembers: 1,
@@ -75,7 +79,7 @@ export default function Jobs() {
 
   const editForm = useForm<EditJobFormData>({
     resolver: zodResolver(editJobSchema),
-    defaultValues: { date: "", clientName: "", serviceType: "", location: "", amount: 0, teamMembers: 1, items: [] },
+    defaultValues: { date: "", clientName: "", serviceType: "", description: "", location: "", amount: 0, teamMembers: 1, items: [] },
   });
   const editItemsArray = useFieldArray({ control: editForm.control, name: "items" });
   const editItems = editForm.watch("items") ?? [];
@@ -87,7 +91,7 @@ export default function Jobs() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: jobsKey });
-        form.reset({ ...form.getValues(), clientName: "", amount: 0, location: "" });
+        form.reset({ ...form.getValues(), clientName: "", amount: 0, location: "", description: "" });
         toast({ title: "Job logged successfully" });
       }
     }
@@ -194,7 +198,8 @@ export default function Jobs() {
       location: job!.location ?? "",
       amount: job!.amount,
       teamMembers: job!.teamMembers,
-      items: jobItems.map(it => ({ serviceType: it.serviceType, amount: it.amount })),
+      description: job!.description ?? "",
+      items: jobItems.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount })),
     });
     setEditJob({ id: job!.id });
   }
@@ -202,14 +207,15 @@ export default function Jobs() {
   function convertToMulti() {
     const cur = editForm.getValues();
     editItemsArray.replace([
-      { serviceType: cur.serviceType || "", amount: Number(cur.amount) || 0 },
-      { serviceType: "", amount: 0 },
+      { serviceType: cur.serviceType || "", description: cur.description || "", amount: Number(cur.amount) || 0 },
+      { serviceType: "", description: "", amount: 0 },
     ]);
   }
 
   function collapseToSingle() {
     const only = (editForm.getValues("items") ?? [])[0];
     editForm.setValue("serviceType", only?.serviceType ?? "");
+    editForm.setValue("description", only?.description ?? "");
     editForm.setValue("amount", Number(only?.amount) || 0);
     editItemsArray.replace([]);
   }
@@ -254,6 +260,9 @@ export default function Jobs() {
                     <SelectContent>{SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                   </Select>
                 </FormItem>
+              )} />
+              <FormField control={form.control} name="description" render={({ field }) => (
+                <FormItem className="lg:col-span-2"><FormLabel>Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet, 5-seater, 8kg..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
               )} />
               <FormField control={form.control} name="teamMembers" render={({ field }) => (
                 <FormItem><FormLabel>Team</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl></FormItem>
@@ -405,6 +414,11 @@ export default function Jobs() {
                     </FormItem>
                   )} />
                 )}
+                {!isMultiEdit && (
+                  <FormField control={editForm.control} name="description" render={({ field }) => (
+                    <FormItem><FormLabel>Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                  )} />
+                )}
                 <FormField control={editForm.control} name="location" render={({ field }) => (
                   <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                 )} />
@@ -432,7 +446,7 @@ export default function Jobs() {
                           Switch to single service
                         </Button>
                       )}
-                      <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => editItemsArray.append({ serviceType: "", amount: 0 })}>
+                      <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => editItemsArray.append({ serviceType: "", description: "", amount: 0 })}>
                         <Plus className="h-3.5 w-3.5" /> Add service
                       </Button>
                     </div>
@@ -448,8 +462,11 @@ export default function Jobs() {
                           <FormMessage />
                         </FormItem>
                       )} />
+                      <FormField control={editForm.control} name={`items.${idx}.description`} render={({ field }) => (
+                        <FormItem className="flex-1"><FormLabel className="text-xs">Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                      )} />
                       <FormField control={editForm.control} name={`items.${idx}.amount`} render={({ field }) => (
-                        <FormItem className="w-36"><FormLabel className="text-xs">Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
+                        <FormItem className="w-28"><FormLabel className="text-xs">Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
                       )} />
                       <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" disabled={editItemsArray.fields.length === 1} onClick={() => editItemsArray.remove(idx)} title="Remove service">
                         <Trash2 className="h-4 w-4 text-red-500" />

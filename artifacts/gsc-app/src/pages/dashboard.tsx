@@ -135,11 +135,12 @@ const jobSchema = z.object({
   teamMembers: z.coerce.number().min(1),
   items: z.array(z.object({
     serviceType: z.string().min(1, "Service required"),
+    description: z.string().optional(),
     amount: z.coerce.number().min(0),
   })).min(1, "Add at least one service"),
 });
 
-const emptyItem = { serviceType: "", amount: 0 };
+const emptyItem = { serviceType: "", description: "", amount: 0 };
 
 function WorkerDashboard({ username }: { username: string }) {
   const queryClient = useQueryClient();
@@ -237,8 +238,11 @@ function WorkerDashboard({ username }: { username: string }) {
                         <FormMessage />
                       </FormItem>
                     )} />
+                    <FormField control={form.control} name={`items.${idx}.description`} render={({ field }) => (
+                      <FormItem className="flex-1"><FormLabel className="text-xs">Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet, 5-seater, 8kg..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                    )} />
                     <FormField control={form.control} name={`items.${idx}.amount`} render={({ field }) => (
-                      <FormItem className="w-40"><FormLabel className="text-xs">Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
+                      <FormItem className="w-32"><FormLabel className="text-xs">Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
                     )} />
                     <Button
                       type="button"
