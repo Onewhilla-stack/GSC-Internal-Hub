@@ -10,11 +10,40 @@ import { formatKES } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/spinner";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, LabelList } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
 const COLORS = ['#29ABE2', '#F5C518', '#000000', '#888888', '#E22929', '#333333'];
+
+type DeltaLabelProps = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  value?: number;
+};
+
+// Renders a month-over-month change indicator at the end of each bar:
+// green ▲ for growth, red ▼ for decline, gray – when unchanged.
+function renderDeltaLabel(props: DeltaLabelProps) {
+  const { x = 0, y = 0, width = 0, height = 0, value = 0 } = props;
+  const fill = value > 0 ? "#16a34a" : value < 0 ? "#E22929" : "#888888";
+  const text = value > 0 ? `▲ +${value}` : value < 0 ? `▼ ${value}` : "– 0";
+  return (
+    <text
+      x={x + width + 6}
+      y={y + height / 2}
+      fill={fill}
+      fontSize={11}
+      fontWeight={600}
+      textAnchor="start"
+      dominantBaseline="central"
+    >
+      {text}
+    </text>
+  );
+}
 
 export default function Analytics() {
   const [drillMonth, setDrillMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -152,12 +181,20 @@ export default function Analytics() {
             <CardContent className="h-72">
               {monthServiceCounts.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthServiceCounts} layout="vertical" margin={{ left: 40, right: 24 }}>
+                  <BarChart data={monthServiceCounts} layout="vertical" margin={{ left: 40, right: 64 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
                     <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{fontSize: 12}} />
                     <YAxis dataKey="serviceType" type="category" tickLine={false} axisLine={false} tick={{fontSize: 11}} width={100} />
-                    <Tooltip formatter={(val: number) => [`${val} ${val === 1 ? "time" : "times"}`, "Performed"]} />
-                    <Bar dataKey="count" fill="#29ABE2" radius={[0, 4, 4, 0]} />
+                    <Tooltip
+                      formatter={(val: number, _name, item) => {
+                        const delta = (item?.payload as { delta?: number } | undefined)?.delta ?? 0;
+                        const change = delta > 0 ? `+${delta} vs. last month` : delta < 0 ? `${delta} vs. last month` : "no change vs. last month";
+                        return [`${val} ${val === 1 ? "time" : "times"} (${change})`, "Performed"];
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#29ABE2" radius={[0, 4, 4, 0]}>
+                      <LabelList dataKey="delta" content={renderDeltaLabel} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (

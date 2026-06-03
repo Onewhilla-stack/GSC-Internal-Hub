@@ -813,7 +813,8 @@ export const GetMonthDrillResponse = zod.object({
 })),
   "serviceCounts": zod.array(zod.object({
   "serviceType": zod.string(),
-  "count": zod.number()
+  "count": zod.number(),
+  "delta": zod.number()
 }))
 })
 

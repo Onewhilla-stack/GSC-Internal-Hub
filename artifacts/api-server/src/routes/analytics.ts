@@ -145,8 +145,10 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
   const [year, mon] = month.split("-").map(Number);
   const start = new Date(year, mon - 1, 1).toISOString().split("T")[0];
   const end = new Date(year, mon, 1).toISOString().split("T")[0];
+  // Previous month window for month-over-month service count deltas.
+  const prevStart = new Date(year, mon - 2, 1).toISOString().split("T")[0];
 
-  const [jobs, expenses] = await Promise.all([
+  const [jobs, expenses, prevJobs] = await Promise.all([
     db.select().from(jobsTable).where(and(gte(jobsTable.date, start), lt(jobsTable.date, end))).orderBy(sql`${jobsTable.date} DESC`),
     db.select({
       category: expensesTable.category,
@@ -155,10 +157,24 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
       .where(and(gte(expensesTable.date, start), lt(expensesTable.date, end)))
       .groupBy(expensesTable.category)
       .orderBy(sql`SUM(${expensesTable.amount}) DESC`),
+    db.select({
+      serviceType: jobsTable.serviceType,
+      items: jobsTable.items,
+    }).from(jobsTable).where(and(gte(jobsTable.date, prevStart), lt(jobsTable.date, start))),
   ]);
 
   const revenue = jobs.reduce((s, j) => s + parseFloat(j.amount), 0);
   const expTotal = expenses.reduce((s, e) => s + parseFloat(e.total), 0);
+
+  // Reuse the shared per-line-item counting helper for both months, then credit
+  // each current-month service its change versus the previous month.
+  const prevCounts = new Map(
+    aggregateServiceCounts(prevJobs).map(c => [c.serviceType, c.count]),
+  );
+  const serviceCounts = aggregateServiceCounts(jobs).map(c => ({
+    ...c,
+    delta: c.count - (prevCounts.get(c.serviceType) ?? 0),
+  }));
 
   res.json({
     month,
@@ -168,7 +184,7 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
     jobCount: jobs.length,
     jobs: jobs.map(j => ({ ...j, amount: parseFloat(j.amount), wages: parseFloat(j.wages), netIncome: parseFloat(j.netIncome) })),
     expenseBreakdown: expenses.map(e => ({ category: e.category, total: parseFloat(e.total) })),
-    serviceCounts: aggregateServiceCounts(jobs),
+    serviceCounts,
   });
 });
 

@@ -51,6 +51,12 @@ export interface ServiceCount {
   count: number;
 }
 
+export interface ServiceCountDelta {
+  serviceType: string;
+  count: number;
+  delta: number;
+}
+
 export interface TopClient {
   clientName: string;
   totalSpent: number;
@@ -377,7 +383,7 @@ export interface MonthDrill {
   jobCount: number;
   jobs: Job[];
   expenseBreakdown: ExpenseCategorySummary[];
-  serviceCounts: ServiceCount[];
+  serviceCounts: ServiceCountDelta[];
 }
 
 export interface Settings {

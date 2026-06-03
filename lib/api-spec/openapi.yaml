@@ -1022,6 +1022,14 @@ components:
         serviceType: { type: string }
         count: { type: integer }
 
+    ServiceCountDelta:
+      type: object
+      required: [serviceType, count, delta]
+      properties:
+        serviceType: { type: string }
+        count: { type: integer }
+        delta: { type: integer }
+
     TopClient:
       type: object
       required: [clientName, totalSpent, jobCount]
@@ -1415,7 +1423,7 @@ components:
         serviceCounts:
           type: array
           items:
-            $ref: "#/components/schemas/ServiceCount"
+            $ref: "#/components/schemas/ServiceCountDelta"
 
     # ── Settings ──
     Settings:
