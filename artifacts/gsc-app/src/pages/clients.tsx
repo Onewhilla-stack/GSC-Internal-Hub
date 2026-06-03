@@ -206,16 +206,14 @@ export default function Clients() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-primary tracking-tight">Client Database</h1>
         <div className="flex items-center gap-2">
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsv} />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
+            <Upload className="h-4 w-4" /> Import CSV
+          </Button>
           {isDirector && (
-            <>
-              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsv} />
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
-                <Upload className="h-4 w-4" /> Import CSV
-              </Button>
-              <Button variant="outline" onClick={exportCSV} disabled={!clients?.length} className="gap-2">
-                <Download className="h-4 w-4" /> Export CSV
-              </Button>
-            </>
+            <Button variant="outline" onClick={exportCSV} disabled={!clients?.length} className="gap-2">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
           )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
