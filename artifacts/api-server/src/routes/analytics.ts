@@ -3,7 +3,7 @@ import { db, jobsTable, expensesTable } from "@workspace/db";
 import { sql, gte, lt, and, eq } from "drizzle-orm";
 import { GetMonthDrillQueryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { aggregateRevenueByService } from "../lib/service-breakdown";
+import { aggregateRevenueByService, aggregateServiceCounts } from "../lib/service-breakdown";
 
 const router = Router();
 
@@ -83,7 +83,7 @@ router.get("/analytics/expense-breakdown", requireAuth, async (req, res): Promis
 });
 
 router.get("/analytics/key-stats", requireAuth, async (req, res): Promise<void> => {
-  const [jobsByMonth, expByMonth, topClientRow, topServiceRow, avgJob] = await Promise.all([
+  const [jobsByMonth, expByMonth, topClientRow, serviceRows, avgJob] = await Promise.all([
     db.select({
       month: sql<string>`to_char(${jobsTable.date}::date, 'YYYY-MM')`,
       revenue: sql<string>`SUM(${jobsTable.amount})`,
@@ -98,10 +98,12 @@ router.get("/analytics/key-stats", requireAuth, async (req, res): Promise<void> 
     }).from(jobsTable).groupBy(jobsTable.clientName).orderBy(sql`SUM(${jobsTable.amount}) DESC`).limit(1),
     db.select({
       serviceType: jobsTable.serviceType,
-      cnt: sql<string>`COUNT(*)`,
-    }).from(jobsTable).groupBy(jobsTable.serviceType).orderBy(sql`COUNT(*) DESC`).limit(1),
+      items: jobsTable.items,
+    }).from(jobsTable),
     db.select({ avg: sql<string>`AVG(${jobsTable.amount})` }).from(jobsTable),
   ]);
+
+  const serviceCounts = aggregateServiceCounts(serviceRows);
 
   const expMap: Record<string, number> = {};
   for (const e of expByMonth) expMap[e.month] = parseFloat(e.total);
@@ -124,7 +126,7 @@ router.get("/analytics/key-stats", requireAuth, async (req, res): Promise<void> 
   res.json({
     bestMonthByRevenue: bestRevMonth,
     bestMonthByProfit: bestProfitMonth,
-    mostPopularService: topServiceRow[0]?.serviceType ?? "-",
+    mostPopularService: serviceCounts[0]?.serviceType ?? "-",
     topClientAllTime: topClientRow[0]?.clientName ?? "-",
     avgRevenuePerJob: parseFloat(avgJob[0]?.avg ?? "0"),
     avgMonthlyProfit: Math.round(avgMonthlyProfit * 100) / 100,
