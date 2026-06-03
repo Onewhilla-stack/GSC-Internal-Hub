@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Plus, Search, Pencil, Trash2, Upload } from "lucide-react";
+import { Download, Plus, Search, Pencil, Trash2, Upload, X, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import Papa from "papaparse";
@@ -33,6 +33,16 @@ const clientSchema = z.object({
 
 type ClientFormData = z.infer<typeof clientSchema>;
 
+type PreviewRow = {
+  clientCode?: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+  status: string;
+  firstVisitDate?: string;
+};
+
 export default function Clients() {
   const { isDirector } = useAuth();
   const queryClient = useQueryClient();
@@ -42,6 +52,11 @@ export default function Clients() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editClient, setEditClient] = useState<{ id: number; clientCode: string; name: string } & ClientFormData | null>(null);
+
+  // CSV import preview state
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [csvFileName, setCsvFileName] = useState("");
 
   const { data: clients, isLoading } = useListClients({
     search: search || undefined,
@@ -93,6 +108,8 @@ export default function Clients() {
     mutation: {
       onSuccess: (res) => {
         queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+        setImportPreviewOpen(false);
+        setPreviewRows([]);
         toast({ title: `Imported ${res.imported} clients${res.errors ? ` (${res.errors} skipped)` : ""}` });
       },
       onError: () => toast({ title: "Import failed", variant: "destructive" }),
@@ -102,6 +119,7 @@ export default function Clients() {
   function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCsvFileName(file.name);
     Papa.parse<string[]>(file, {
       skipEmptyLines: true,
       complete: (result) => {
@@ -120,7 +138,7 @@ export default function Clients() {
         const statusIdx = col(columns, ["status"]);
         const firstVisitIdx = col(columns, ["first visit", "first contact", "date"]);
 
-        const rows: Array<{ clientCode?: string; name: string; phone?: string; email?: string; location?: string; status: string; firstVisitDate?: string }> = [];
+        const rows: PreviewRow[] = [];
         for (let i = headerIndex + 1; i < data.length; i++) {
           const r = data[i];
           const name = cell(r, nameIdx);
@@ -139,10 +157,24 @@ export default function Clients() {
           toast({ title: "No valid client rows found in CSV", variant: "destructive" });
           return;
         }
-        importClients.mutate({ data: { rows } });
+        setPreviewRows(rows);
+        setImportPreviewOpen(true);
       }
     });
     e.target.value = "";
+  }
+
+  function confirmImport() {
+    if (previewRows.length === 0) return;
+    importClients.mutate({ data: { rows: previewRows } });
+  }
+
+  function removePreviewRow(idx: number) {
+    setPreviewRows(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  function updatePreviewStatus(idx: number, status: string) {
+    setPreviewRows(prev => prev.map((r, i) => i === idx ? { ...r, status } : r));
   }
 
   const exportCSV = () => {
@@ -177,8 +209,8 @@ export default function Clients() {
           {isDirector && (
             <>
               <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsv} />
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importClients.isPending} className="gap-2">
-                {importClients.isPending ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />} Import CSV
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
+                <Upload className="h-4 w-4" /> Import CSV
               </Button>
               <Button variant="outline" onClick={exportCSV} disabled={!clients?.length} className="gap-2">
                 <Download className="h-4 w-4" /> Export CSV
@@ -227,6 +259,104 @@ export default function Clients() {
           </Dialog>
         </div>
       </div>
+
+      {/* CSV Import Preview Dialog */}
+      <Dialog open={importPreviewOpen} onOpenChange={(o) => { if (!o) { setImportPreviewOpen(false); setPreviewRows([]); } }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Import Preview
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between text-sm text-gray-500 pb-2 border-b">
+            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{csvFileName}</span>
+            <span><span className="font-semibold text-gray-800">{previewRows.length}</span> clients ready to import</span>
+          </div>
+
+          <p className="text-sm text-gray-500">
+            Review the rows below before importing. You can fix the status or remove any row you don't want.
+          </p>
+
+          <div className="overflow-auto flex-1 border rounded-md">
+            <Table>
+              <TableHeader className="bg-black sticky top-0">
+                <TableRow className="hover:bg-black">
+                  <TableHead className="text-white">Name</TableHead>
+                  <TableHead className="text-white">Phone</TableHead>
+                  <TableHead className="text-white">Location</TableHead>
+                  <TableHead className="text-white">Status</TableHead>
+                  <TableHead className="text-white">First Visit</TableHead>
+                  <TableHead className="text-white w-10"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {previewRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center h-16 text-gray-400">
+                      All rows removed
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  previewRows.map((row, idx) => (
+                    <TableRow key={idx} className="group">
+                      <TableCell className="font-medium">
+                        {row.name}
+                        {row.clientCode && (
+                          <span className="ml-2 font-mono text-xs text-gray-400">{row.clientCode}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">{row.phone || "—"}</TableCell>
+                      <TableCell className="text-sm text-gray-600">{row.location || "—"}</TableCell>
+                      <TableCell>
+                        <Select value={row.status} onValueChange={(val) => updatePreviewStatus(idx, val)}>
+                          <SelectTrigger className="h-7 w-28 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {row.firstVisitDate ? formatDate(row.firstVisitDate) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => removePreviewRow(idx)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <p className="text-xs text-gray-400 flex-1">
+              Clients with matching names will be created as new entries. Existing codes in your CSV are preserved.
+            </p>
+            <Button variant="outline" onClick={() => { setImportPreviewOpen(false); setPreviewRows([]); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmImport}
+              disabled={importClients.isPending || previewRows.length === 0}
+              className="bg-primary text-white gap-2"
+            >
+              {importClients.isPending ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+              Import {previewRows.length} Client{previewRows.length !== 1 ? "s" : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card className="shadow-sm border-t-4 border-t-primary">
         <CardContent className="p-0">
