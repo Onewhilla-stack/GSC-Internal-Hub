@@ -131,6 +131,7 @@ const SERVICES = ["Laundry", "Carpet Cleaning", "Fumigation", "Sofa/Upholstery",
 const jobSchema = z.object({
   date: z.string().min(1),
   clientName: z.string().min(1, "Client name required"),
+  clientPhone: z.string().optional(),
   location: z.string().optional(),
   teamMembers: z.coerce.number().min(1),
   items: z.array(z.object({
@@ -153,6 +154,7 @@ function WorkerDashboard({ username }: { username: string }) {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       clientName: "",
+      clientPhone: "",
       location: "",
       teamMembers: 1,
       items: [{ ...emptyItem }],
@@ -165,7 +167,7 @@ function WorkerDashboard({ username }: { username: string }) {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListJobsQueryKey({ month: today }) });
-        form.reset({ ...form.getValues(), clientName: "", location: "", items: [{ ...emptyItem }] });
+        form.reset({ ...form.getValues(), clientName: "", clientPhone: "", location: "", items: [{ ...emptyItem }] });
       }
     }
   });
@@ -206,12 +208,15 @@ function WorkerDashboard({ username }: { username: string }) {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit((data) => createJob.mutate({ data }))} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <FormField control={form.control} name="date" render={({ field }) => (
                   <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="clientName" render={({ field }) => (
                   <FormItem><FormLabel>Client Name</FormLabel><FormControl><Input placeholder="Client name..." {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="clientPhone" render={({ field }) => (
+                  <FormItem><FormLabel>Client Phone</FormLabel><FormControl><Input type="tel" placeholder="07xx xxx xxx" {...field} value={field.value ?? ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="location" render={({ field }) => (
                   <FormItem><FormLabel>Location</FormLabel><FormControl><Input placeholder="Location..." {...field} /></FormControl></FormItem>

@@ -1075,6 +1075,7 @@ components:
         clientId: { type: ["integer", "null"] }
         date: { type: string }
         clientName: { type: string }
+        clientPhone: { type: string }
         serviceType: { type: string }
         description: { type: string }
         location: { type: string }

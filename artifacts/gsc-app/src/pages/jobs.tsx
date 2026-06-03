@@ -28,6 +28,7 @@ const SERVICES = ["Laundry", "Carpet Cleaning", "Fumigation", "Sofa/Upholstery",
 const jobSchema = z.object({
   date: z.string().min(1, "Date required"),
   clientName: z.string().min(1, "Client name required"),
+  clientPhone: z.string().optional(),
   serviceType: z.string().min(1, "Service required"),
   description: z.string().optional(),
   location: z.string().optional(),
@@ -69,6 +70,7 @@ export default function Jobs() {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       clientName: "",
+      clientPhone: "",
       serviceType: "",
       description: "",
       location: "",
@@ -91,7 +93,7 @@ export default function Jobs() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: jobsKey });
-        form.reset({ ...form.getValues(), clientName: "", amount: 0, location: "", description: "" });
+        form.reset({ ...form.getValues(), clientName: "", clientPhone: "", amount: 0, location: "", description: "" });
         toast({ title: "Job logged successfully" });
       }
     }
@@ -254,6 +256,9 @@ export default function Jobs() {
               )} />
               <FormField control={form.control} name="clientName" render={({ field }) => (
                 <FormItem className="lg:col-span-2"><FormLabel>Client Name</FormLabel><FormControl><Input placeholder="Name..." {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="clientPhone" render={({ field }) => (
+                <FormItem className="lg:col-span-2"><FormLabel>Client Phone</FormLabel><FormControl><Input type="tel" placeholder="07xx xxx xxx" {...field} value={field.value ?? ""} /></FormControl></FormItem>
               )} />
               <FormField control={form.control} name="serviceType" render={({ field }) => (
                 <FormItem className="lg:col-span-2"><FormLabel>Service</FormLabel>

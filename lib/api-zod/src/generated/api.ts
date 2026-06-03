@@ -193,6 +193,7 @@ export const CreateJobBody = zod.object({
   "clientId": zod.number().nullish(),
   "date": zod.string(),
   "clientName": zod.string(),
+  "clientPhone": zod.string().optional(),
   "serviceType": zod.string().optional(),
   "description": zod.string().optional(),
   "location": zod.string().optional(),

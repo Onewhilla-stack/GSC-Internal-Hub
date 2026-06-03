@@ -12,6 +12,7 @@ export interface JobInput {
   clientId?: number | null;
   date: string;
   clientName: string;
+  clientPhone?: string;
   serviceType?: string;
   description?: string;
   location?: string;

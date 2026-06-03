@@ -1,7 +1,9 @@
 import { Router } from "express";
-import { db, jobsTable, settingsTable, activityLogTable } from "@workspace/db";
+import { db, jobsTable, clientsTable, settingsTable, activityLogTable } from "@workspace/db";
 import type { JobItem } from "@workspace/db";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { generateClientCode } from "../lib/client-code";
+import { logger } from "../lib/logger";
 import {
   ListJobsQueryParams,
   CreateJobBody,
@@ -54,6 +56,51 @@ function resolveJobServices(input: ResolveServicesInput): ResolvedServices {
 
 async function logActivity(username: string, action: string, recordType: string, recordId: number | null, details: string) {
   await db.insert(activityLogTable).values({ username, action, recordType, recordId, details });
+}
+
+// Logging a visit also makes sure the client exists in the Clients database.
+// Clients are matched by name (case-insensitive). When a matching client is
+// found, its id is returned (and a missing phone is backfilled if one was
+// supplied); otherwise a new client record is auto-created from the visit.
+async function linkOrCreateClient(
+  name: string,
+  phone: string | undefined,
+  location: string | undefined,
+  date: string,
+  username: string,
+): Promise<number | null> {
+  const trimmedName = name.trim();
+  if (!trimmedName) return null;
+  const trimmedPhone = phone?.trim() || null;
+
+  const [existing] = await db
+    .select()
+    .from(clientsTable)
+    .where(sql`lower(trim(${clientsTable.name})) = lower(${trimmedName})`)
+    .limit(1);
+
+  if (existing) {
+    if (trimmedPhone && !existing.phone) {
+      await db.update(clientsTable)
+        .set({ phone: trimmedPhone, lastEditedBy: username, lastEditedAt: new Date() })
+        .where(eq(clientsTable.id, existing.id));
+    }
+    return existing.id;
+  }
+
+  const clientCode = await generateClientCode();
+  const [created] = await db.insert(clientsTable).values({
+    clientCode,
+    name: trimmedName,
+    phone: trimmedPhone,
+    location: location?.trim() || null,
+    status: "New",
+    firstVisitDate: date,
+    createdBy: username,
+  }).returning();
+
+  await logActivity(username, "Added", "Client", created.id, `${trimmedName} (${clientCode}) — auto-added from visit`);
+  return created.id;
 }
 
 router.get("/jobs", requireAuth, async (req, res): Promise<void> => {
@@ -110,8 +157,27 @@ router.post("/jobs", requireAuth, async (req, res): Promise<void> => {
   const netIncome = amount - wages;
   const username = req.session.username!;
 
+  // When the caller already references a client, trust it. Otherwise make sure
+  // the client exists in the Clients database (auto-create/link). A failure here
+  // must never block logging the visit, so fall back to leaving the job unlinked.
+  let linkedClientId: number | null = parsed.data.clientId ?? null;
+  if (linkedClientId == null) {
+    try {
+      linkedClientId = await linkOrCreateClient(
+        parsed.data.clientName,
+        parsed.data.clientPhone,
+        parsed.data.location,
+        parsed.data.date,
+        username,
+      );
+    } catch (err) {
+      logger.warn({ err }, "Failed to auto-create/link client for visit; logging without client link");
+      linkedClientId = null;
+    }
+  }
+
   const [row] = await db.insert(jobsTable).values({
-    clientId: parsed.data.clientId ?? null,
+    clientId: linkedClientId,
     clientName: parsed.data.clientName,
     date: parsed.data.date,
     serviceType,

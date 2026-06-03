@@ -12,23 +12,9 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
+import { nextClientCodeNumber, formatClientCode, generateClientCode } from "../lib/client-code";
 
 const router = Router();
-
-async function nextClientCodeNumber(): Promise<number> {
-  const [row] = await db.select({
-    max: sql<number>`COALESCE(MAX(CAST(NULLIF(regexp_replace(${clientsTable.clientCode}, '\\D', '', 'g'), '') AS INTEGER)), 0)`,
-  }).from(clientsTable);
-  return (row?.max ?? 0) + 1;
-}
-
-function formatClientCode(num: number): string {
-  return `GSC-${String(num).padStart(3, "0")}`;
-}
-
-async function generateClientCode(): Promise<string> {
-  return formatClientCode(await nextClientCodeNumber());
-}
 
 async function logActivity(username: string, action: string, recordType: string, recordId: number | null, details: string) {
   await db.insert(activityLogTable).values({ username, action, recordType, recordId, details });
