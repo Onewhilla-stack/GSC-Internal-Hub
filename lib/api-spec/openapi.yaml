@@ -1397,7 +1397,7 @@ components:
 
     MonthDrill:
       type: object
-      required: [month, revenue, expenses, netProfit, jobCount, jobs, expenseBreakdown]
+      required: [month, revenue, expenses, netProfit, jobCount, jobs, expenseBreakdown, serviceCounts]
       properties:
         month: { type: string }
         revenue: { type: number }
@@ -1412,6 +1412,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExpenseCategorySummary"
+        serviceCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceCount"
 
     # ── Settings ──
     Settings:

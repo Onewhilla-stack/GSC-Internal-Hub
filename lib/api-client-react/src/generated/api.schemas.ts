@@ -377,6 +377,7 @@ export interface MonthDrill {
   jobCount: number;
   jobs: Job[];
   expenseBreakdown: ExpenseCategorySummary[];
+  serviceCounts: ServiceCount[];
 }
 
 export interface Settings {

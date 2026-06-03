@@ -810,6 +810,10 @@ export const GetMonthDrillResponse = zod.object({
   "expenseBreakdown": zod.array(zod.object({
   "category": zod.string(),
   "total": zod.number()
+})),
+  "serviceCounts": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "count": zod.number()
 }))
 })
 

@@ -43,6 +43,7 @@ export default function Analytics() {
   }, [monthDrill]);
   const expBreakdown = monthDrill?.expenseBreakdown ?? [];
   const serviceCounts = keyStats?.serviceCounts ?? [];
+  const monthServiceCounts = monthDrill?.serviceCounts ?? [];
 
   return (
     <div className="space-y-6">
@@ -144,6 +145,27 @@ export default function Analytics() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="shadow-sm border-t-4 border-t-secondary">
+            <CardHeader>
+              <CardTitle>Most Popular Services ({drillMonth})</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              {monthServiceCounts.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthServiceCounts} layout="vertical" margin={{ left: 40, right: 24 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
+                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{fontSize: 12}} />
+                    <YAxis dataKey="serviceType" type="category" tickLine={false} axisLine={false} tick={{fontSize: 11}} width={100} />
+                    <Tooltip formatter={(val: number) => [`${val} ${val === 1 ? "time" : "times"}`, "Performed"]} />
+                    <Bar dataKey="count" fill="#29ABE2" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center text-gray-500 h-full">No jobs recorded this month</div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="shadow-sm border-t-4 border-t-secondary">
             <CardHeader>
               <CardTitle>Revenue by Service ({drillMonth})</CardTitle>

@@ -168,6 +168,7 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
     jobCount: jobs.length,
     jobs: jobs.map(j => ({ ...j, amount: parseFloat(j.amount), wages: parseFloat(j.wages), netIncome: parseFloat(j.netIncome) })),
     expenseBreakdown: expenses.map(e => ({ category: e.category, total: parseFloat(e.total) })),
+    serviceCounts: aggregateServiceCounts(jobs),
   });
 });
 

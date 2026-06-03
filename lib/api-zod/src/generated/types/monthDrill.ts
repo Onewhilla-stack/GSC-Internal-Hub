@@ -7,6 +7,7 @@
  */
 import type { ExpenseCategorySummary } from './expenseCategorySummary';
 import type { Job } from './job';
+import type { ServiceCount } from './serviceCount';
 
 export interface MonthDrill {
   month: string;
@@ -16,4 +17,5 @@ export interface MonthDrill {
   jobCount: number;
   jobs: Job[];
   expenseBreakdown: ExpenseCategorySummary[];
+  serviceCounts: ServiceCount[];
 }
