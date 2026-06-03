@@ -15,6 +15,7 @@ import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pencil, Trash2, ReceiptText, Upload, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useDateRange } from "@/lib/date-range";
@@ -353,7 +354,9 @@ export default function Jobs() {
               ) : jobs?.length === 0 ? (
                 <TableRow><TableCell colSpan={isDirector ? 10 : 5} className="text-center h-24 text-gray-500">No jobs recorded for this period</TableCell></TableRow>
               ) : (
-                jobs?.map(job => (
+                jobs?.map(job => {
+                  const jobReceipts = (allReceipts ?? []).filter((r) => r.jobId === job.id);
+                  return (
                   <TableRow key={job.id}>
                     <TableCell>{formatDate(job.date)}</TableCell>
                     <TableCell className="font-medium">{job.clientName}</TableCell>
@@ -381,7 +384,6 @@ export default function Jobs() {
                             <Pencil className="h-3.5 w-3.5 text-primary" />
                           </Button>
                           {(() => {
-                            const jobReceipts = (allReceipts ?? []).filter((r) => r.jobId === job.id);
                             return (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -413,33 +415,53 @@ export default function Jobs() {
                       </TableCell>
                     )}
                     <TableCell className="text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        title="Generate receipt"
-                        onClick={() => {
-                          const params = new URLSearchParams({
-                            client: job.clientName,
-                            date: job.date.split("T")[0],
-                            jobId: String(job.id),
-                          });
-                          if (job.items && job.items.length > 0) {
-                            params.set("items", JSON.stringify(job.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))));
-                          } else {
-                            // Single-service job: description lives on the job itself,
-                            // so carry it through as a one-item list (not service/amount
-                            // alone) or the receipt loses the details.
-                            params.set("items", JSON.stringify([{ serviceType: job.serviceType, description: job.description ?? "", amount: job.amount }]));
-                          }
-                          navigate(`/receipts?${params.toString()}`);
-                        }}
-                      >
-                        <ReceiptText className="h-3.5 w-3.5 text-[#F5C518]" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="relative h-7 w-7"
+                              title={jobReceipts.length > 0 ? "Receipted — generate another" : "Generate receipt"}
+                              onClick={() => {
+                                const params = new URLSearchParams({
+                                  client: job.clientName,
+                                  date: job.date.split("T")[0],
+                                  jobId: String(job.id),
+                                });
+                                if (job.items && job.items.length > 0) {
+                                  params.set("items", JSON.stringify(job.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))));
+                                } else {
+                                  // Single-service job: description lives on the job itself,
+                                  // so carry it through as a one-item list (not service/amount
+                                  // alone) or the receipt loses the details.
+                                  params.set("items", JSON.stringify([{ serviceType: job.serviceType, description: job.description ?? "", amount: job.amount }]));
+                                }
+                                navigate(`/receipts?${params.toString()}`);
+                              }}
+                            >
+                              <ReceiptText className={`h-3.5 w-3.5 ${jobReceipts.length > 0 ? "text-[#F5C518] fill-[#F5C518]/30" : "text-[#F5C518]"}`} />
+                              {jobReceipts.length > 0 && (
+                                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-white">
+                                  {jobReceipts.length}
+                                </span>
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          {jobReceipts.length > 0 && (
+                            <TooltipContent>
+                              <p className="font-medium">
+                                {jobReceipts.length} linked receipt{jobReceipts.length > 1 ? "s" : ""}
+                              </p>
+                              <p className="font-mono text-xs">{jobReceipts.map((r) => r.receiptNumber).join(", ")}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
