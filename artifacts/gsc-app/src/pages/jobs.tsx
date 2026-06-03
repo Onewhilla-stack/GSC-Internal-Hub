@@ -56,6 +56,8 @@ const editJobSchema = z.object({
 
 type EditJobFormData = z.infer<typeof editJobSchema>;
 
+type ImportRow = { date: string; clientName: string; serviceType: string; description?: string; location?: string; amount: number; teamMembers: number };
+
 export default function Jobs() {
   const { isDirector } = useAuth();
   const { toast } = useToast();
@@ -64,6 +66,7 @@ export default function Jobs() {
   const { from, to } = useDateRange();
   const [editJob, setEditJob] = useState<{ id: number } | null>(null);
   const [syncReceipts, setSyncReceipts] = useState(true);
+  const [importPreview, setImportPreview] = useState<ImportRow[] | null>(null);
   const { data: jobs, isLoading } = useListJobs({ from, to });
   const jobsKey = getListJobsQueryKey({ from, to });
 
@@ -137,6 +140,7 @@ export default function Jobs() {
     mutation: {
       onSuccess: (res) => {
         queryClient.invalidateQueries({ queryKey: jobsKey });
+        setImportPreview(null);
         toast({ title: `Imported ${res.imported} jobs${res.errors ? ` (${res.errors} skipped)` : ""}` });
       },
       onError: () => toast({ title: "Import failed", variant: "destructive" }),
@@ -187,7 +191,7 @@ export default function Jobs() {
           toast({ title: "No valid job rows found in CSV", variant: "destructive" });
           return;
         }
-        importJobs.mutate({ data: { rows } });
+        setImportPreview(rows);
       }
     });
     e.target.value = "";
@@ -206,6 +210,18 @@ export default function Jobs() {
     : (Number(editAmount) || 0);
   const editWages = (Number(editTeamMembers) || 1) * wageRate;
   const editNetIncome = editTotal - editWages;
+
+  // Mirror what the server stores for imported jobs: wages = teamMembers × the
+  // configured rate (no "at least 1" default — an omitted team column means 0
+  // wages on the server), and net income = amount − wages.
+  const previewRows = (importPreview ?? []).map((row) => {
+    const wages = row.teamMembers * wageRate;
+    return { ...row, wages, netIncome: row.amount - wages };
+  });
+  const previewTotals = previewRows.reduce(
+    (acc, r) => ({ amount: acc.amount + r.amount, wages: acc.wages + r.wages, netIncome: acc.netIncome + r.netIncome }),
+    { amount: 0, wages: 0, netIncome: 0 },
+  );
 
   function openEdit(job: typeof jobs extends (infer T)[] | undefined ? T : never) {
     const jobItems = job!.items ?? [];
@@ -541,6 +557,76 @@ export default function Jobs() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* CSV Import Preview */}
+      <Dialog open={!!importPreview} onOpenChange={(o) => { if (!o && !importJobs.isPending) setImportPreview(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Review import — {previewRows.length} job{previewRows.length === 1 ? "" : "s"}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[55vh] overflow-auto rounded-md border">
+            <Table>
+              <TableHeader className="bg-black sticky top-0">
+                <TableRow className="hover:bg-black">
+                  <TableHead className="text-white">Date</TableHead>
+                  <TableHead className="text-white">Client</TableHead>
+                  <TableHead className="text-white">Service</TableHead>
+                  <TableHead className="text-white text-center">Team</TableHead>
+                  {isDirector && <TableHead className="text-white text-right">Amount</TableHead>}
+                  {isDirector && <TableHead className="text-white text-right">Wages</TableHead>}
+                  {isDirector && <TableHead className="text-secondary font-bold text-right">Net</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {previewRows.map((r, i) => (
+                  <TableRow key={i}>
+                    <TableCell>{formatDate(r.date)}</TableCell>
+                    <TableCell className="font-medium">{r.clientName}</TableCell>
+                    <TableCell>{r.serviceType}</TableCell>
+                    <TableCell className="text-center">{r.teamMembers}</TableCell>
+                    {isDirector && <TableCell className="text-right font-mono">{formatKES(r.amount)}</TableCell>}
+                    {isDirector && <TableCell className="text-right font-mono text-red-600">{formatKES(r.wages)}</TableCell>}
+                    {isDirector && <TableCell className="text-right font-mono font-bold text-green-600">{formatKES(r.netIncome)}</TableCell>}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {isDirector && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                <div className="text-xs text-gray-500">Total Amount</div>
+                <div className="font-mono text-sm font-semibold text-primary">{formatKES(previewTotals.amount)}</div>
+              </div>
+              <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                <div className="text-xs text-gray-500">Total Wages</div>
+                <div className="font-mono text-sm text-red-600">{formatKES(previewTotals.wages)}</div>
+              </div>
+              <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                <div className="text-xs text-gray-500">Total Net Income</div>
+                <div className="font-mono text-sm text-green-600 font-bold">{formatKES(previewTotals.netIncome)}</div>
+              </div>
+            </div>
+          )}
+          {isDirector && (
+            <p className="text-xs text-gray-500">
+              Wages are calculated at {formatKES(wageRate)} per team member per day (from Settings).
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" type="button" disabled={importJobs.isPending} onClick={() => setImportPreview(null)}>Cancel</Button>
+            <Button
+              type="button"
+              disabled={importJobs.isPending}
+              className="bg-secondary text-black hover:bg-secondary/90"
+              onClick={() => { if (importPreview) importJobs.mutate({ data: { rows: importPreview } }); }}
+            >
+              {importJobs.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+              Import {previewRows.length} job{previewRows.length === 1 ? "" : "s"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
