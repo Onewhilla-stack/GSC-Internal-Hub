@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { db, jobsTable, clientsTable, settingsTable, activityLogTable, receiptsTable } from "@workspace/db";
-import type { JobItem } from "@workspace/db";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { generateClientCode } from "../lib/client-code";
 import { logger } from "../lib/logger";
@@ -17,42 +16,13 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
 import { resolveDateRange } from "../lib/date-range";
 import { resolveWageRate, computeJobMoney } from "../lib/job-money";
+import { resolveJobServices, resolveJobUpdateServices } from "../lib/job-services";
 
 const router = Router();
 
 async function getWageRate(): Promise<number> {
   const [setting] = await db.select().from(settingsTable).where(eq(settingsTable.key, "wagePerPersonPerDay"));
   return resolveWageRate(setting?.value);
-}
-
-type ResolveServicesInput = {
-  serviceType?: string;
-  amount?: number;
-  items?: Array<{ serviceType: string; description?: string; amount: number }>;
-};
-
-type ResolvedServices =
-  | { ok: true; serviceType: string; amount: number; items: JobItem[] | null }
-  | { ok: false; error: string };
-
-// A visit can be logged either as a single service (serviceType + amount) or as
-// multiple line items. When items are present, the total amount and serviceType
-// label are derived from them so wages/analytics stay consistent.
-function resolveJobServices(input: ResolveServicesInput): ResolvedServices {
-  if (input.items && input.items.length > 0) {
-    const items: JobItem[] = input.items.map((it) => ({
-      serviceType: it.serviceType,
-      description: it.description ?? null,
-      amount: it.amount,
-    }));
-    const amount = items.reduce((sum, it) => sum + it.amount, 0);
-    const serviceType = items.length === 1 ? items[0].serviceType : "Multiple Services";
-    return { ok: true, serviceType, amount, items };
-  }
-  if (input.serviceType == null || input.amount == null) {
-    return { ok: false, error: "Either items or both serviceType and amount are required" };
-  }
-  return { ok: true, serviceType: input.serviceType, amount: input.amount, items: null };
 }
 
 async function logActivity(username: string, action: string, recordType: string, recordId: number | null, details: string) {
@@ -283,46 +253,17 @@ router.patch("/jobs/:id", requireAuth, requireDirector, async (req, res): Promis
   const teamMembers = parsed.data.teamMembers ?? existing[0].teamMembers;
   const username = req.session.username!;
 
-  // Recompute the monetary fields. If items are supplied, the total and label
-  // are derived from them; otherwise fall back to an explicit amount/serviceType
-  // (or the existing values when neither changed).
-  let serviceType: string | undefined;
-  let amount: number;
-  let items: JobItem[] | null | undefined;
-  if (parsed.data.items === null) {
-    // Explicit collapse from multi-service back to a single service: clear the
-    // stored items and use the supplied serviceType/amount (or existing values).
-    serviceType = parsed.data.serviceType ?? existing[0].serviceType;
-    amount = parsed.data.amount ?? parseFloat(existing[0].amount);
-    items = null;
-  } else if (parsed.data.items !== undefined) {
-    const r = resolveJobServices({ items: parsed.data.items });
-    if (!r.ok) {
-      res.status(400).json({ error: r.error });
-      return;
-    }
-    serviceType = r.serviceType;
-    amount = r.amount;
-    items = r.items;
-  } else if (existing[0].items && existing[0].items.length > 0) {
-    // Multi-service row being edited without resupplying items: keep the stored
-    // items and always recompute the total/label from them. This prevents an
-    // amount/serviceType-only update from desyncing the row (which would make
-    // row.amount and the items[] breakdown disagree across reports).
-    const stored = existing[0].items.map((it) => ({
-      serviceType: it.serviceType,
-      description: it.description ?? undefined,
-      amount: it.amount,
-    }));
-    const r = resolveJobServices({ items: stored });
-    serviceType = r.ok ? r.serviceType : existing[0].serviceType;
-    amount = r.ok ? r.amount : parseFloat(existing[0].amount);
-    items = undefined;
-  } else {
-    serviceType = parsed.data.serviceType;
-    amount = parsed.data.amount ?? parseFloat(existing[0].amount);
-    items = undefined;
+  // Recompute the monetary fields. The items field decides whether to replace,
+  // keep, or collapse the stored line items (see resolveJobUpdateServices).
+  const resolvedUpdate = resolveJobUpdateServices(
+    { items: parsed.data.items, serviceType: parsed.data.serviceType, amount: parsed.data.amount },
+    { serviceType: existing[0].serviceType, amount: parseFloat(existing[0].amount), items: existing[0].items },
+  );
+  if (!resolvedUpdate.ok) {
+    res.status(400).json({ error: resolvedUpdate.error });
+    return;
   }
+  const { serviceType, amount, items } = resolvedUpdate;
   const { wages, netIncome } = computeJobMoney({ teamMembers, wageRate, amount });
 
   const [row] = await db.update(jobsTable).set({
