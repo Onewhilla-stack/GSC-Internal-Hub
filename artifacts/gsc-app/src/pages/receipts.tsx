@@ -72,6 +72,14 @@ const createReceiptSchema = z.object({
 const editReceiptSchema = z.object({
   paymentStatus: z.string().min(1),
   notes: z.string().optional(),
+  serviceType: z.string().optional(),
+  description: z.string().optional(),
+  amount: z.coerce.number().min(0).optional(),
+  items: z.array(z.object({
+    serviceType: z.string().min(1, "Service required"),
+    description: z.string().optional(),
+    amount: z.coerce.number().min(0),
+  })).optional(),
 });
 
 const SERVICES = [
@@ -270,8 +278,16 @@ export default function Receipts() {
 
   const editForm = useForm<z.infer<typeof editReceiptSchema>>({
     resolver: zodResolver(editReceiptSchema),
-    defaultValues: { paymentStatus: "Pending", notes: "" },
+    defaultValues: { paymentStatus: "Pending", notes: "", serviceType: "", description: "", amount: 0, items: [] },
   });
+
+  const editItemsArray = useFieldArray({ control: editForm.control, name: "items" });
+  const editItems = editForm.watch("items") ?? [];
+  const isMultiEdit = editItems.length > 0;
+  const editSingleAmount = editForm.watch("amount");
+  const editTotal = isMultiEdit
+    ? editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+    : (Number(editSingleAmount) || 0);
 
   // Open create dialog when URL has a prefill client name
   useEffect(() => {
@@ -340,8 +356,54 @@ export default function Receipts() {
   });
 
   function openEdit(r: ReceiptRow) {
-    editForm.reset({ paymentStatus: r.paymentStatus, notes: r.notes ?? "" });
+    const its = r.items ?? [];
+    const multi = its.length > 1;
+    editForm.reset({
+      paymentStatus: r.paymentStatus,
+      notes: r.notes ?? "",
+      serviceType: multi ? "" : (its[0]?.serviceType ?? r.serviceType),
+      description: multi ? "" : (its[0]?.description ?? r.description ?? ""),
+      amount: multi ? 0 : (its[0]?.amount ?? r.amount),
+      items: multi
+        ? its.map((it) => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))
+        : [],
+    });
     setEditReceipt(r);
+  }
+
+  function convertEditToMulti() {
+    const cur = editForm.getValues();
+    editItemsArray.replace([
+      { serviceType: cur.serviceType || "", description: cur.description || "", amount: Number(cur.amount) || 0 },
+      { serviceType: "", description: "", amount: 0 },
+    ]);
+  }
+
+  function collapseEditToSingle() {
+    const only = (editForm.getValues("items") ?? [])[0];
+    editForm.setValue("serviceType", only?.serviceType ?? "");
+    editForm.setValue("description", only?.description ?? "");
+    editForm.setValue("amount", Number(only?.amount) || 0);
+    editItemsArray.replace([]);
+  }
+
+  function submitEdit(data: z.infer<typeof editReceiptSchema>) {
+    // Only directors may change the services; workers send a status/notes-only
+    // update (omitting items keeps the stored line items untouched).
+    if (!isDirector) {
+      updateReceipt.mutate({
+        id: editReceipt!.id,
+        data: { paymentStatus: data.paymentStatus, notes: data.notes },
+      });
+      return;
+    }
+    const finalItems = (data.items && data.items.length > 0)
+      ? data.items
+      : [{ serviceType: data.serviceType ?? "", description: data.description ?? "", amount: Number(data.amount) || 0 }];
+    updateReceipt.mutate({
+      id: editReceipt!.id,
+      data: { paymentStatus: data.paymentStatus, notes: data.notes, items: finalItems },
+    });
   }
 
   const livePreview = createForm.watch();
@@ -714,20 +776,120 @@ export default function Receipts() {
 
       {/* ── Edit Receipt Dialog ──────────────────────────────────────────── */}
       <Dialog open={!!editReceipt} onOpenChange={(open) => !open && setEditReceipt(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit {editReceipt?.receiptNumber}</DialogTitle>
           </DialogHeader>
           <div className="text-sm text-gray-500 mb-2">
-            {editReceipt?.clientName} — {formatKES(editReceipt?.amount ?? 0)}
+            {editReceipt?.clientName} — {formatKES(editTotal)}
           </div>
           <Form {...editForm}>
             <form
-              onSubmit={editForm.handleSubmit((data) =>
-                updateReceipt.mutate({ id: editReceipt!.id, data })
-              )}
+              onSubmit={editForm.handleSubmit(submitEdit)}
               className="space-y-4"
             >
+              {/* Services — directors only */}
+              {isDirector && (
+                <div className="rounded-lg border border-gray-200 p-3 space-y-3 bg-gray-50/50">
+                  {!isMultiEdit ? (
+                    <>
+                      <FormField control={editForm.control} name="serviceType" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Service</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="Select service..." /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <FormField control={editForm.control} name="description" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Description (optional)</FormLabel>
+                            <FormControl><Input className="bg-white" placeholder="Details..." {...field} /></FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField control={editForm.control} name="amount" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Amount (KES)</FormLabel>
+                            <FormControl><Input className="bg-white" type="number" min="0" step="0.01" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="gap-1 h-8" onClick={convertEditToMulti}>
+                        <Plus className="h-3.5 w-3.5" /> Add another service
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Services</span>
+                        <div className="flex items-center gap-2">
+                          {editItemsArray.fields.length === 1 && (
+                            <Button type="button" variant="ghost" size="sm" className="h-8 text-primary" onClick={collapseEditToSingle}>
+                              Switch to single service
+                            </Button>
+                          )}
+                          <Button type="button" variant="outline" size="sm" className="gap-1 h-8" onClick={() => editItemsArray.append({ serviceType: "", description: "", amount: 0 })}>
+                            <Plus className="h-3.5 w-3.5" /> Add Service
+                          </Button>
+                        </div>
+                      </div>
+                      {editItemsArray.fields.map((fieldItem, index) => (
+                        <div key={fieldItem.id} className="rounded-lg border border-gray-200 p-3 space-y-2 relative bg-white">
+                          {editItemsArray.fields.length > 1 && (
+                            <button
+                              type="button"
+                              className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                              title="Remove service"
+                              onClick={() => editItemsArray.remove(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                          <FormField control={editForm.control} name={`items.${index}.serviceType`} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Service</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="Select service..." /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                  {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <div className="grid grid-cols-2 gap-2">
+                            <FormField control={editForm.control} name={`items.${index}.description`} render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Description (optional)</FormLabel>
+                                <FormControl><Input className="bg-white" placeholder="Details..." {...field} /></FormControl>
+                              </FormItem>
+                            )} />
+                            <FormField control={editForm.control} name={`items.${index}.amount`} render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Amount (KES)</FormLabel>
+                                <FormControl><Input className="bg-white" type="number" min="0" step="0.01" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  <div className="flex justify-between items-center px-1 pt-1 text-sm font-semibold">
+                    <span className="text-gray-500">Total</span>
+                    <span className="font-mono">{formatKES(editTotal)}</span>
+                  </div>
+                </div>
+              )}
+
               <FormField control={editForm.control} name="paymentStatus" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payment Status</FormLabel>

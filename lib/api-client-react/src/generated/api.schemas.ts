@@ -322,6 +322,8 @@ export interface ReceiptInput {
 export interface ReceiptUpdate {
   paymentStatus?: string;
   notes?: string;
+  /** @minItems 1 */
+  items?: ReceiptItemInput[];
 }
 
 export interface ReceiptsSummary {

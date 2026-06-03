@@ -667,9 +667,17 @@ export const UpdateReceiptParams = zod.object({
   "id": zod.coerce.number()
 })
 
+
+
+
 export const UpdateReceiptBody = zod.object({
   "paymentStatus": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().optional(),
+  "amount": zod.number()
+})).min(1).optional()
 })
 
 export const UpdateReceiptResponse = zod.object({

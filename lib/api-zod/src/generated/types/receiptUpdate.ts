@@ -5,8 +5,11 @@
  * Gold Standard Cleaners internal management API
  * OpenAPI spec version: 0.1.0
  */
+import type { ReceiptItemInput } from './receiptItemInput';
 
 export interface ReceiptUpdate {
   paymentStatus?: string;
   notes?: string;
+  /** @minItems 1 */
+  items?: ReceiptItemInput[];
 }

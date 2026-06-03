@@ -19,6 +19,13 @@ serviceType label.
 **Why:** without the explicit `null`, a multi→single conversion sent only serviceType/amount,
 which hit the "omitted → keep stored items" branch and silently ignored the collapse.
 
+**Receipts differ:** a receipt ALWAYS stores an items array (create sets items even for one
+service), so there is no items:null collapse signal. PATCH /receipts recomputes total + the
+"Multiple Services" label whenever `items` is supplied; "collapse to single" is just a one-item
+array. The edit UI mirrors the job convert/collapse UX but always sends `items`. Editing a
+receipt's services is director-only (guarded inside the handler by `req.session.role`), while
+status/notes-only edits stay open to workers.
+
 **How to apply:** the OpenAPI `JobUpdate.items` is `type: ["array","null"]` so the generated
 zod accepts null. Frontend edit dialog (`artifacts/gsc-app/src/pages/jobs.tsx`) sends
 `items: null` when collapsing; multi mode is driven by `editItems.length > 0`. Wages are always

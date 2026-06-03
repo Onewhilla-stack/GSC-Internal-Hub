@@ -174,13 +174,37 @@ router.patch("/receipts/:id", requireAuth, async (req, res): Promise<void> => {
 
   const username = req.session.username!;
 
+  // Base fields that are always editable.
+  const updateValues: Partial<typeof receiptsTable.$inferInsert> = {
+    paymentStatus: parsed.data.paymentStatus,
+    notes: parsed.data.notes,
+    lastEditedBy: username,
+    lastEditedAt: new Date(),
+  };
+
+  // When line items are supplied, recompute the total and the "Multiple Services"
+  // label from them (a single item collapses back to that item's own service).
+  // Receipts always store an items array, so a "single service" receipt is just a
+  // one-item array — there is no items:null collapse signal like jobs have.
+  if (parsed.data.items !== undefined) {
+    if (req.session.role !== "director") {
+      res.status(403).json({ error: "Director access required to edit receipt services" });
+      return;
+    }
+    const items = parsed.data.items.map((it) => ({
+      serviceType: it.serviceType,
+      description: it.description ?? null,
+      amount: it.amount,
+    }));
+    const total = items.reduce((s, it) => s + it.amount, 0);
+    updateValues.items = items;
+    updateValues.serviceType = items.length === 1 ? items[0].serviceType : "Multiple Services";
+    updateValues.amount = total.toFixed(2);
+    updateValues.description = null;
+  }
+
   const [row] = await db.update(receiptsTable)
-    .set({
-      paymentStatus: parsed.data.paymentStatus,
-      notes: parsed.data.notes,
-      lastEditedBy: username,
-      lastEditedAt: new Date(),
-    })
+    .set(updateValues)
     .where(eq(receiptsTable.id, params.data.id))
     .returning();
 
