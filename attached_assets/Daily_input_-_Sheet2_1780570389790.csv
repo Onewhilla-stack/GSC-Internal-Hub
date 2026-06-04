@@ -1,0 +1,28 @@
+Date,Client Name,Service Type,"Amount In
+(KES)","Team
+Members","Wages
+(Auto)","Supplies
+(KES)","Transport
+(KES)","Other Costs
+(KES)","Net Income
+(KES)"
+28/05/2026,Hellen,Deep Cleaning,"1,500",,-,,,,"1,500"
+29/05/2026,Fazil,Carpet Cleaning,"2,700",,-,,,,"2,700"
+30/05/2026,Roy,Laundry,300,,-,,,,300
+30/05/2026,Tevin,Laundry,"2,100",,-,,,,"2,100"
+30/05/2026,Ben,Laundry,"1,800",,-,,,,"1,800"
+28/05/2026,EXPENSE - GSC Tool,Expense,-,,-,,,"3,000","(3,000)"
+28/05/2026,EXPENSE - Bright Force,Expense,-,,-,"1,000",,,"(1,000)"
+28/05/2026,EXPENSE - Tokens,Expense,-,,-,,,"3,072","(3,072)"
+28/05/2026,EXPENSE - Omo/Jik,Expense,-,,-,400,,,(400)
+28/05/2026,EXPENSE - Multipurpose Soap,Expense,-,,-,600,,,(600)
+28/05/2026,EXPENSE - Lava (Insect Killer),Expense,-,,-,"1,000",,,"(1,000)"
+30/05/2026,EXPENSE - Advance (Machine Lady),Expense,-,,"4,000",,,,"(4,000)"
+30/05/2026,EXPENSE - Transport,Expense,-,,-,,"1,000",,"(1,000)"
+,,,,,,,,,
+Date ,Client Name,Description,Receipt No,Client Location,Cleint Status,Units (KGs) (Size),Amount,,
+5/28/2026,Hellen,House Cleaning,,Windgab,Existing Client,4 BR,"Ksh1,500.00",,
+5/29/2026,Fazil,Carpet Cleaning,,Ndemi Road,Existing Client,6x9x25,"Ksh2,700.00",,
+5/30/2026,Roy,1st Load,,ngong road,Existing Client,3 kgs,Ksh300.00,,
+5/30/2026,Tevin,1st Load & Shoes,,Waithaka,Existing Client,"6 kgs, 6 pairs","Ksh2,100.00",,
+5/30/2026,Ben,Curtain Cleaning,,Wanye,Existing Client,9 kgs,"Ksh1,800.00",,
