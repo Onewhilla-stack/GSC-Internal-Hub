@@ -8,6 +8,7 @@
 import type { ExpenseCategorySummary } from './expenseCategorySummary';
 import type { Job } from './job';
 import type { ServiceCountDelta } from './serviceCountDelta';
+import type { ServiceRevenueDelta } from './serviceRevenueDelta';
 
 export interface MonthDrill {
   month: string;
@@ -18,4 +19,5 @@ export interface MonthDrill {
   jobs: Job[];
   expenseBreakdown: ExpenseCategorySummary[];
   serviceCounts: ServiceCountDelta[];
+  serviceRevenue: ServiceRevenueDelta[];
 }

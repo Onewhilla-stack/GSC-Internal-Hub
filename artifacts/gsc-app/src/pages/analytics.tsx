@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { 
   useGetPLSummary, 
   useGetRevenueTrend, 
@@ -45,6 +45,33 @@ function renderDeltaLabel(props: DeltaLabelProps) {
   );
 }
 
+type RevenueDeltaLabelProps = DeltaLabelProps & { value?: number | null };
+
+// Renders a KES revenue change indicator (e.g. ▲ +12k or ▼ -5k) at the end of
+// each revenue bar. Shows nothing when no prior-month data exists (null delta).
+function renderRevenueDeltaLabel(props: RevenueDeltaLabelProps) {
+  const { x = 0, y = 0, width = 0, height = 0, value } = props;
+  if (value === null || value === undefined) return <text />;
+  const fill = value > 0 ? "#16a34a" : value < 0 ? "#E22929" : "#888888";
+  const absK = Math.abs(value) >= 1000
+    ? `${(Math.abs(value) / 1000).toFixed(1)}k`
+    : String(Math.abs(value));
+  const text = value > 0 ? `▲ +${absK}` : value < 0 ? `▼ -${absK}` : "– 0";
+  return (
+    <text
+      x={x + width + 6}
+      y={y + height / 2}
+      fill={fill}
+      fontSize={11}
+      fontWeight={600}
+      textAnchor="start"
+      dominantBaseline="central"
+    >
+      {text}
+    </text>
+  );
+}
+
 export default function Analytics() {
   const [drillMonth, setDrillMonth] = useState(new Date().toISOString().slice(0, 7));
   
@@ -53,26 +80,12 @@ export default function Analytics() {
   const { data: keyStats, isLoading: statsLoading } = useGetKeyStats();
   const { data: monthDrill } = useGetMonthDrill({ month: drillMonth }, { query: { enabled: !!drillMonth, queryKey: getGetMonthDrillQueryKey({ month: drillMonth }) } });
 
-  // Drill-down charts derive from the selected month's data (not all-time).
-  // Multi-service visits are stored as one job row with an items[] breakdown, so
-  // we expand each line item to attribute revenue to the correct service rather
-  // than bucketing everything under the "Multiple Services" label.
-  const serviceBreakdown = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const j of monthDrill?.jobs ?? []) {
-      if (j.items && j.items.length > 0) {
-        for (const item of j.items) {
-          map.set(item.serviceType, (map.get(item.serviceType) ?? 0) + item.amount);
-        }
-      } else {
-        map.set(j.serviceType, (map.get(j.serviceType) ?? 0) + j.amount);
-      }
-    }
-    return Array.from(map, ([serviceType, revenue]) => ({ serviceType, revenue })).sort((a, b) => b.revenue - a.revenue);
-  }, [monthDrill]);
   const expBreakdown = monthDrill?.expenseBreakdown ?? [];
   const serviceCounts = keyStats?.serviceCounts ?? [];
   const monthServiceCounts = monthDrill?.serviceCounts ?? [];
+  // Revenue per service with month-over-month delta — computed server-side via
+  // aggregateRevenueByService so multi-service line items are attributed correctly.
+  const serviceRevenue = monthDrill?.serviceRevenue ?? [];
 
   return (
     <div className="space-y-6">
@@ -208,17 +221,34 @@ export default function Analytics() {
               <CardTitle>Revenue by Service ({drillMonth})</CardTitle>
             </CardHeader>
             <CardContent className="h-72">
-              {serviceBreakdown ? (
+              {serviceRevenue.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={serviceBreakdown} layout="vertical" margin={{ left: 40 }}>
+                  <BarChart data={serviceRevenue} layout="vertical" margin={{ left: 40, right: 72 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
-                    <XAxis type="number" tickFormatter={(val) => `${val/1000}k`} />
+                    <XAxis type="number" tickFormatter={(val) => `${val/1000}k`} tickLine={false} axisLine={false} tick={{fontSize: 12}} />
                     <YAxis dataKey="serviceType" type="category" tickLine={false} axisLine={false} tick={{fontSize: 11}} width={100} />
-                    <Tooltip formatter={(val: number) => formatKES(val)} />
-                    <Bar dataKey="revenue" fill="#F5C518" radius={[0, 4, 4, 0]} />
+                    <Tooltip
+                      formatter={(val: number, _name, item) => {
+                        const delta = (item?.payload as { revenueDelta?: number | null } | undefined)?.revenueDelta;
+                        if (delta === null || delta === undefined) {
+                          return [formatKES(val), "Revenue"];
+                        }
+                        const changeStr = delta > 0
+                          ? `+${formatKES(delta)} vs. last month`
+                          : delta < 0
+                          ? `${formatKES(delta)} vs. last month`
+                          : "no change vs. last month";
+                        return [`${formatKES(val)} (${changeStr})`, "Revenue"];
+                      }}
+                    />
+                    <Bar dataKey="revenue" fill="#F5C518" radius={[0, 4, 4, 0]}>
+                      <LabelList dataKey="revenueDelta" content={renderRevenueDeltaLabel} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              ) : <Spinner />}
+              ) : (
+                <div className="flex items-center justify-center text-gray-500 h-full">No jobs recorded this month</div>
+              )}
             </CardContent>
           </Card>
 

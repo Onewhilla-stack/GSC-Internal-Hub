@@ -1030,6 +1030,14 @@ components:
         count: { type: integer }
         delta: { type: integer }
 
+    ServiceRevenueDelta:
+      type: object
+      required: [serviceType, revenue, revenueDelta]
+      properties:
+        serviceType: { type: string }
+        revenue: { type: number }
+        revenueDelta: { type: ["number", "null"] }
+
     TopClient:
       type: object
       required: [clientName, totalSpent, jobCount]
@@ -1405,7 +1413,7 @@ components:
 
     MonthDrill:
       type: object
-      required: [month, revenue, expenses, netProfit, jobCount, jobs, expenseBreakdown, serviceCounts]
+      required: [month, revenue, expenses, netProfit, jobCount, jobs, expenseBreakdown, serviceCounts, serviceRevenue]
       properties:
         month: { type: string }
         revenue: { type: number }
@@ -1424,6 +1432,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ServiceCountDelta"
+        serviceRevenue:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRevenueDelta"
 
     # ── Settings ──
     Settings:

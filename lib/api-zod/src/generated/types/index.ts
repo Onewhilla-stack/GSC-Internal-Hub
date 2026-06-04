@@ -61,6 +61,7 @@ export * from './receiptUpdate';
 export * from './serviceCount';
 export * from './serviceCountDelta';
 export * from './serviceRevenue';
+export * from './serviceRevenueDelta';
 export * from './settings';
 export * from './settingsUpdate';
 export * from './topClient';

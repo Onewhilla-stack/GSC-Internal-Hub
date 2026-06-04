@@ -57,6 +57,13 @@ export interface ServiceCountDelta {
   delta: number;
 }
 
+export interface ServiceRevenueDelta {
+  serviceType: string;
+  revenue: number;
+  /** @nullable */
+  revenueDelta: number | null;
+}
+
 export interface TopClient {
   clientName: string;
   totalSpent: number;
@@ -384,6 +391,7 @@ export interface MonthDrill {
   jobs: Job[];
   expenseBreakdown: ExpenseCategorySummary[];
   serviceCounts: ServiceCountDelta[];
+  serviceRevenue: ServiceRevenueDelta[];
 }
 
 export interface Settings {

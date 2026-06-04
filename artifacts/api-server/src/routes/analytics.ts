@@ -159,6 +159,7 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
       .orderBy(sql`SUM(${expensesTable.amount}) DESC`),
     db.select({
       serviceType: jobsTable.serviceType,
+      amount: jobsTable.amount,
       items: jobsTable.items,
     }).from(jobsTable).where(and(gte(jobsTable.date, prevStart), lt(jobsTable.date, start))),
   ]);
@@ -176,6 +177,17 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
     delta: c.count - (prevCounts.get(c.serviceType) ?? 0),
   }));
 
+  // Compute per-service revenue for current and previous month using the same
+  // line-item attribution logic as aggregateRevenueByService.
+  const prevRevenueMap = new Map(
+    aggregateRevenueByService(prevJobs).map(r => [r.serviceType, r.revenue]),
+  );
+  const serviceRevenue = aggregateRevenueByService(jobs).map(r => {
+    const prevRev = prevRevenueMap.get(r.serviceType);
+    const revenueDelta = prevRev !== undefined ? Math.round((r.revenue - prevRev) * 100) / 100 : null;
+    return { serviceType: r.serviceType, revenue: r.revenue, revenueDelta };
+  });
+
   res.json({
     month,
     revenue,
@@ -185,6 +197,7 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
     jobs: jobs.map(j => ({ ...j, amount: parseFloat(j.amount), wages: parseFloat(j.wages), netIncome: parseFloat(j.netIncome) })),
     expenseBreakdown: expenses.map(e => ({ category: e.category, total: parseFloat(e.total) })),
     serviceCounts,
+    serviceRevenue,
   });
 });
 
