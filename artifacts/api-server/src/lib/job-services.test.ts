@@ -4,6 +4,7 @@ import {
   MULTIPLE_SERVICES_LABEL,
   resolveJobServices,
   resolveJobUpdateServices,
+  deriveReceiptLineItems,
   type ExistingJobServices,
 } from "./job-services";
 
@@ -247,5 +248,79 @@ describe("resolveJobUpdateServices", () => {
         items: null,
       });
     });
+  });
+});
+
+describe("deriveReceiptLineItems", () => {
+  it("single-service job (no items) -> one-item receipt with that service's label", () => {
+    const result = deriveReceiptLineItems({
+      items: null,
+      serviceType: "Carpet Cleaning",
+      description: "Living room",
+      amount: 2500,
+    });
+    expect(result).toEqual({
+      items: [{ serviceType: "Carpet Cleaning", description: "Living room", amount: 2500 }],
+      total: 2500,
+      serviceType: "Carpet Cleaning",
+    });
+  });
+
+  it("single-service job with no description -> description is null on the receipt item", () => {
+    const result = deriveReceiptLineItems({
+      items: null,
+      serviceType: "Window Cleaning",
+      description: null,
+      amount: 1000,
+    });
+    expect(result.items[0].description).toBeNull();
+    expect(result.serviceType).toBe("Window Cleaning");
+    expect(result.total).toBe(1000);
+  });
+
+  it("multi-service job -> receipt items mirror the stored line items with summed total and 'Multiple Services' label", () => {
+    const result = deriveReceiptLineItems({
+      items: [
+        { serviceType: "Carpet Cleaning", description: null, amount: 2000 },
+        { serviceType: "Window Cleaning", description: "All floors", amount: 800 },
+      ],
+      serviceType: MULTIPLE_SERVICES_LABEL,
+      description: null,
+      amount: 2800,
+    });
+    expect(result).toEqual({
+      items: [
+        { serviceType: "Carpet Cleaning", description: null, amount: 2000 },
+        { serviceType: "Window Cleaning", description: "All floors", amount: 800 },
+      ],
+      total: 2800,
+      serviceType: MULTIPLE_SERVICES_LABEL,
+    });
+  });
+
+  it("job collapsed back to a single service (one-item items array) -> one-item receipt with that service's label", () => {
+    const result = deriveReceiptLineItems({
+      items: [{ serviceType: "Deep Clean", description: null, amount: 3500 }],
+      serviceType: "Deep Clean",
+      description: null,
+      amount: 3500,
+    });
+    expect(result).toEqual({
+      items: [{ serviceType: "Deep Clean", description: null, amount: 3500 }],
+      total: 3500,
+      serviceType: "Deep Clean",
+    });
+  });
+
+  it("treats an empty items array the same as null -> falls back to single-service shape", () => {
+    const result = deriveReceiptLineItems({
+      items: [],
+      serviceType: "General Cleaning",
+      description: null,
+      amount: 1200,
+    });
+    expect(result.items).toHaveLength(1);
+    expect(result.serviceType).toBe("General Cleaning");
+    expect(result.total).toBe(1200);
   });
 });

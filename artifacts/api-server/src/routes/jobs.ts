@@ -16,7 +16,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { requireDirector } from "../middlewares/requireDirector";
 import { resolveDateRange } from "../lib/date-range";
 import { resolveWageRate, computeJobMoney } from "../lib/job-money";
-import { resolveJobServices, resolveJobUpdateServices } from "../lib/job-services";
+import { resolveJobServices, resolveJobUpdateServices, deriveReceiptLineItems } from "../lib/job-services";
 
 const router = Router();
 
@@ -292,22 +292,23 @@ router.patch("/jobs/:id", requireAuth, requireDirector, async (req, res): Promis
   if (parsed.data.syncReceipts) {
     const linked = await db.select().from(receiptsTable).where(eq(receiptsTable.jobId, params.data.id));
     if (linked.length > 0) {
-      const receiptItems = row.items && row.items.length > 0
-        ? row.items.map((it) => ({ serviceType: it.serviceType, description: it.description ?? null, amount: it.amount }))
-        : [{ serviceType: row.serviceType, description: row.description, amount: parseFloat(row.amount) }];
-      const receiptTotal = receiptItems.reduce((s, it) => s + it.amount, 0);
-      const receiptServiceType = receiptItems.length === 1 ? receiptItems[0].serviceType : "Multiple Services";
+      const derived = deriveReceiptLineItems({
+        items: row.items,
+        serviceType: row.serviceType,
+        description: row.description,
+        amount: parseFloat(row.amount),
+      });
 
       for (const rec of linked) {
         await db.update(receiptsTable).set({
-          items: receiptItems,
-          serviceType: receiptServiceType,
+          items: derived.items,
+          serviceType: derived.serviceType,
           description: null,
-          amount: receiptTotal.toFixed(2),
+          amount: derived.total.toFixed(2),
           lastEditedBy: username,
           lastEditedAt: new Date(),
         }).where(eq(receiptsTable.id, rec.id));
-        await logActivity(username, "Edited", "Receipt", rec.id, `${rec.receiptNumber} — synced to job services (KES ${receiptTotal.toFixed(2)})`);
+        await logActivity(username, "Edited", "Receipt", rec.id, `${rec.receiptNumber} — synced to job services (KES ${derived.total.toFixed(2)})`);
       }
     }
   }

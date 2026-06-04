@@ -56,6 +56,63 @@ export type ResolvedJobUpdate =
   | { ok: true; serviceType: string | undefined; amount: number; items: JobItem[] | null | undefined }
   | { ok: false; error: string };
 
+// ─── Receipt sync helper ──────────────────────────────────────────────────────
+
+export type ReceiptLineItem = {
+  serviceType: string;
+  description: string | null;
+  amount: number;
+};
+
+export type DerivedReceiptItems = {
+  items: ReceiptLineItem[];
+  total: number;
+  serviceType: string;
+};
+
+// Derive the receipt line items, total, and service-type label from an updated
+// job row. This mirrors the logic used at receipt-creation time so that
+// printed/issued receipts never silently disagree with the underlying job:
+//
+//  - Multi-service job (items array present and non-empty): map each stored
+//    line item to a receipt item; label is "Multiple Services".
+//  - Single-service job (no items array): produce one receipt item from the
+//    top-level serviceType/description/amount; label stays as-is.
+//
+// The single-service fallback keeps receipts for pre-items-era jobs working
+// correctly even when syncReceipts is triggered by an unrelated edit.
+export function deriveReceiptLineItems(job: {
+  items: JobItem[] | null | undefined;
+  serviceType: string;
+  description: string | null | undefined;
+  amount: number;
+}): DerivedReceiptItems {
+  const receiptItems: ReceiptLineItem[] =
+    job.items && job.items.length > 0
+      ? job.items.map((it) => ({
+          serviceType: it.serviceType,
+          description: it.description ?? null,
+          amount: it.amount,
+        }))
+      : [
+          {
+            serviceType: job.serviceType,
+            description: job.description ?? null,
+            amount: job.amount,
+          },
+        ];
+
+  const total = receiptItems.reduce((s, it) => s + it.amount, 0);
+  const serviceType =
+    receiptItems.length === 1
+      ? receiptItems[0].serviceType
+      : MULTIPLE_SERVICES_LABEL;
+
+  return { items: receiptItems, total, serviceType };
+}
+
+// ─── Job update services ──────────────────────────────────────────────────────
+
 // Decide a job's serviceType/amount/items on PATCH. The items field is the pivot:
 //  - explicit null  -> collapse a multi-service visit back to a single service,
 //    using the supplied serviceType/amount (or the existing values).
