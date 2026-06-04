@@ -110,7 +110,11 @@ export default function Clients() {
         queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
         setImportPreviewOpen(false);
         setPreviewRows([]);
-        toast({ title: `Imported ${res.imported} clients${res.errors ? ` (${res.errors} skipped)` : ""}` });
+        if (res.imported === 0 && res.errors > 0) {
+          toast({ title: `No new clients added — all ${res.errors} rows already exist in the database`, variant: "destructive" });
+        } else {
+          toast({ title: `Imported ${res.imported} client${res.imported !== 1 ? "s" : ""}${res.errors ? ` · ${res.errors} already existed (skipped)` : ""}` });
+        }
       },
       onError: () => toast({ title: "Import failed", variant: "destructive" }),
     }

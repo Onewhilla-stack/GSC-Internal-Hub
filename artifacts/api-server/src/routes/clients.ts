@@ -106,7 +106,7 @@ router.post("/clients/import", requireAuth, async (req, res): Promise<void> => {
         nextNum++;
       }
       used.add(clientCode);
-      await db.insert(clientsTable).values({
+      const [inserted] = await db.insert(clientsTable).values({
         clientCode,
         name: row.name,
         phone: row.phone ?? null,
@@ -116,8 +116,13 @@ router.post("/clients/import", requireAuth, async (req, res): Promise<void> => {
         notes: row.notes ?? null,
         firstVisitDate: row.firstVisitDate ?? null,
         createdBy: username,
-      });
-      imported++;
+      }).onConflictDoNothing().returning();
+      if (inserted) {
+        imported++;
+      } else {
+        // Row already exists (duplicate clientCode) — skip silently
+        errors++;
+      }
     } catch {
       errors++;
     }
