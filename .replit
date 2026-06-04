@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "codegen"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "schema"
+
 [[workflows.workflow]]
 name = "codegen"
 author = "agent"
@@ -27,6 +31,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm run codegen:check"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "schema"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm run schema:check"
 
 [workflows.workflow.metadata]
 isValidation = true

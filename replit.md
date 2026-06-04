@@ -11,6 +11,7 @@ Internal business management tool for a cleaning company in Nairobi, Kenya.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm run codegen:check` — regenerate from the spec and fail if the committed generated output is stale (guards against "mystery build break" from out-of-date `lib/api-zod` / `lib/api-client-react`); also registered as the `codegen` validation check
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm run schema:check` — detect schema drift (Drizzle schema vs committed snapshot); also registered as the `schema` validation check
 - Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — session signing key
 
 ## Stack
@@ -60,6 +61,7 @@ Internal business management tool for a cleaning company in Nairobi, Kenya.
 
 - **connect-pg-simple session table** must exist in DB before starting the API server. The `session` table was created via raw SQL (the `createTableIfMissing` option can't find its `table.sql` asset when bundled by esbuild).
 - Run `pnpm --filter @workspace/api-spec run codegen` after any OpenAPI spec change — the generated files in `lib/api-zod` and `lib/api-client-react` must stay in sync.
+- Run `pnpm --filter @workspace/db exec drizzle-kit generate` after any schema change in `lib/db/src/schema/` — the migration snapshot in `lib/db/migrations/` must stay in sync (enforced by `pnpm run schema:check`). Then run `pnpm --filter @workspace/db run push` to apply it to the database.
 - Run `pnpm run typecheck:libs` after schema changes in `lib/db` to rebuild the lib before dependent packages can use the new exports.
 
 ## Pointers
