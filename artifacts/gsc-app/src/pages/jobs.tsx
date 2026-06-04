@@ -158,6 +158,14 @@ export default function Jobs() {
     });
   }
 
+  function removePreviewRow(idx: number) {
+    setImportPreview((prev) => {
+      if (!prev) return prev;
+      const next = prev.filter((_, i) => i !== idx);
+      return next.length === 0 ? null : next;
+    });
+  }
+
   function handleCsv(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -656,6 +664,7 @@ export default function Jobs() {
                   {isDirector && <TableHead className="text-white text-right">Amount</TableHead>}
                   {isDirector && <TableHead className="text-white text-right">Wages</TableHead>}
                   {isDirector && <TableHead className="text-secondary font-bold text-right">Net</TableHead>}
+                  <TableHead className="w-8" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -698,6 +707,17 @@ export default function Jobs() {
                     )}
                     {isDirector && <TableCell className="text-right font-mono text-sm text-red-600">{formatKES(r.wages)}</TableCell>}
                     {isDirector && <TableCell className="text-right font-mono text-sm font-bold text-green-600">{formatKES(r.netIncome)}</TableCell>}
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-400 hover:text-red-600"
+                        onClick={() => removePreviewRow(i)}
+                        title="Remove this row"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
