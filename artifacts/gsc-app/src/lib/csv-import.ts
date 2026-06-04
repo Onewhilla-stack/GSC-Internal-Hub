@@ -108,3 +108,77 @@ export function cell(row: string[], idx: number | undefined): string {
   if (idx === undefined) return "";
   return String(row[idx] ?? "").trim();
 }
+
+// ---------------------------------------------------------------------------
+// parseJobCsvRows
+// ---------------------------------------------------------------------------
+
+export type ParsedJobRow = {
+  date: string;
+  clientName: string;
+  serviceType: string;
+  description?: string;
+  location?: string;
+  amount: number;
+  teamMembers: number;
+};
+
+export type ParseJobCsvResult =
+  | { ok: true; rows: ParsedJobRow[] }
+  | { ok: false; error: string };
+
+/**
+ * Parse a 2-D array of CSV cells (as returned by PapaParse) into a list of
+ * valid job rows, applying the same filtering logic as the UI's handleCsv.
+ *
+ * Returns `{ ok: false, error }` for any of these cases:
+ *  - No header row containing "date" and "client/customer" is found
+ *  - All data rows are filtered out (expense/total markers, missing date,
+ *    or zero-amount)
+ */
+export function parseJobCsvRows(data: string[][]): ParseJobCsvResult {
+  if (data.length === 0) {
+    return { ok: false, error: "Couldn't find a header row with Date and Client columns" };
+  }
+
+  const header = findHeader(data, [/date/i, /client|customer/i]);
+  if (!header) {
+    return { ok: false, error: "Couldn't find a header row with Date and Client columns" };
+  }
+
+  const { headerIndex, columns } = header;
+  const dateIdx = col(columns, ["date"]);
+  const clientIdx = col(columns, ["client name", "client", "customer"]);
+  const serviceIdx = col(columns, ["service type", "service", "description"]);
+  const amountIdx = col(columns, ["amount", "cost", "price"]);
+  const locationIdx = col(columns, ["location", "client location"]);
+  const teamIdx = col(columns, ["team"]);
+
+  const rows: ParsedJobRow[] = [];
+  for (let i = headerIndex + 1; i < data.length; i++) {
+    const r = data[i];
+    const clientName = cell(r, clientIdx);
+    if (!clientName || /^expense/i.test(clientName) || /total/i.test(clientName)) continue;
+    const serviceRaw = cell(r, serviceIdx);
+    if (/^expense$/i.test(serviceRaw)) continue;
+    const date = parseDateToISO(cell(r, dateIdx));
+    if (!date) continue;
+    const amount = parseKES(cell(r, amountIdx));
+    if (amount === 0) continue;
+    const teamRaw = cell(r, teamIdx);
+    rows.push({
+      date,
+      clientName,
+      serviceType: normalizeService(serviceRaw),
+      description: serviceRaw || undefined,
+      location: cell(r, locationIdx) || undefined,
+      amount,
+      teamMembers: teamRaw ? (parseInt(teamRaw, 10) || 0) : 0,
+    });
+  }
+
+  if (rows.length === 0) {
+    return { ok: false, error: "No valid job rows found in CSV" };
+  }
+  return { ok: true, rows };
+}

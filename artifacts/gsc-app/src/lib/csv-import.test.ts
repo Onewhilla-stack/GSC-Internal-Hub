@@ -6,6 +6,7 @@ import {
   findHeader,
   col,
   cell,
+  parseJobCsvRows,
 } from "./csv-import";
 
 // ---------------------------------------------------------------------------
@@ -363,6 +364,133 @@ describe("preview wage math", () => {
       const preview = computePreviewRow(input, wageRate);
       expect(preview.wages).toBe(serverWages);
       expect(preview.netIncome).toBe(serverNetIncome);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseJobCsvRows — edge cases that must not silently produce an empty preview
+// ---------------------------------------------------------------------------
+
+describe("parseJobCsvRows", () => {
+  it("returns an error for a completely empty CSV (no rows at all)", () => {
+    const result = parseJobCsvRows([]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/header row/i);
+    }
+  });
+
+  it("returns an error for a header-only CSV (no data rows below the header)", () => {
+    const result = parseJobCsvRows([
+      ["Date", "Client Name", "Service Type", "Amount"],
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/no valid job rows/i);
+    }
+  });
+
+  it("returns an error when every data row is an expense or total marker", () => {
+    const data = [
+      ["Date", "Client Name", "Service Type", "Amount"],
+      ["01/01/2025", "Expense", "Cleaning supplies", "500"],
+      ["01/01/2025", "Total Clients", "Summary", "10000"],
+      ["01/01/2025", "Alice", "expense", "2000"],
+    ];
+    const result = parseJobCsvRows(data);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/no valid job rows/i);
+    }
+  });
+
+  it("returns an error when all data rows have zero or blank amounts", () => {
+    const data = [
+      ["Date", "Client Name", "Service Type", "Amount"],
+      ["01/01/2025", "Alice", "Carpet Cleaning", "0"],
+      ["02/01/2025", "Bob", "Laundry", "-"],
+      ["03/01/2025", "Carol", "Fumigation", ""],
+    ];
+    const result = parseJobCsvRows(data);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/no valid job rows/i);
+    }
+  });
+
+  it("does not populate rows when all amounts are zero", () => {
+    const data = [
+      ["Date", "Client Name", "Amount"],
+      ["01/01/2025", "Alice", "0"],
+      ["02/01/2025", "Bob", "0"],
+    ];
+    const result = parseJobCsvRows(data);
+    expect(result.ok).toBe(false);
+    // Guard: importPreview must never receive these invalid rows
+    if (result.ok) {
+      expect(result.rows).toHaveLength(0);
+    }
+  });
+
+  it("returns a valid result for a well-formed CSV", () => {
+    const data = [
+      ["Date", "Client Name", "Service Type", "Amount", "Team"],
+      ["15/03/2025", "Alice", "Carpet Cleaning", "3000", "2"],
+      ["16/03/2025", "Bob", "Laundry", "1500", "1"],
+    ];
+    const result = parseJobCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows).toHaveLength(2);
+      expect(result.rows[0].clientName).toBe("Alice");
+      expect(result.rows[0].amount).toBe(3000);
+      expect(result.rows[0].teamMembers).toBe(2);
+      expect(result.rows[1].clientName).toBe("Bob");
+      expect(result.rows[1].amount).toBe(1500);
+    }
+  });
+
+  it("skips expense/total rows but keeps valid ones in the same file", () => {
+    const data = [
+      ["Date", "Client Name", "Service Type", "Amount"],
+      ["01/01/2025", "Alice", "Carpet Cleaning", "2500"],
+      ["01/01/2025", "Expense", "Supplies", "300"],
+      ["01/01/2025", "Total Revenue", "", "2500"],
+    ];
+    const result = parseJobCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].clientName).toBe("Alice");
+    }
+  });
+
+  it("skips rows with missing or unparseable dates", () => {
+    const data = [
+      ["Date", "Client Name", "Amount"],
+      ["", "Alice", "2000"],
+      ["-", "Bob", "1500"],
+      ["not-a-date", "Carol", "1000"],
+      ["01/02/2025", "Dave", "3000"],
+    ];
+    const result = parseJobCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].clientName).toBe("Dave");
+    }
+  });
+
+  it("returns an error when a CSV has no recognisable header columns", () => {
+    const data = [
+      ["Name", "Location", "Notes"],
+      ["Alice", "Westlands", "Regular"],
+    ];
+    const result = parseJobCsvRows(data);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/header row/i);
     }
   });
 });

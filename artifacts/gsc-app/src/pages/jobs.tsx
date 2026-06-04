@@ -24,7 +24,7 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import Papa from "papaparse";
-import { parseKES, parseDateToISO, normalizeService, findHeader, col, cell } from "@/lib/csv-import";
+import { parseJobCsvRows } from "@/lib/csv-import";
 
 const SERVICES = ["Laundry", "Carpet Cleaning", "Fumigation", "Sofa/Upholstery", "Deep Cleaning", "Car Wash", "Duvet Cleaning", "Curtain Cleaning", "Mattress Cleaning", "Office Cleaning", "Post-Renovation Cleaning", "General Cleaning", "Other"];
 
@@ -172,45 +172,12 @@ export default function Jobs() {
     Papa.parse<string[]>(file, {
       skipEmptyLines: true,
       complete: (result) => {
-        const data = result.data as string[][];
-        const header = findHeader(data, [/date/i, /client|customer/i]);
-        if (!header) {
-          toast({ title: "Couldn't find a header row with Date and Client columns", variant: "destructive" });
+        const parsed = parseJobCsvRows(result.data as string[][]);
+        if (!parsed.ok) {
+          toast({ title: parsed.error, variant: "destructive" });
           return;
         }
-        const { headerIndex, columns } = header;
-        const dateIdx = col(columns, ["date"]);
-        const clientIdx = col(columns, ["client name", "client", "customer"]);
-        const serviceIdx = col(columns, ["service type", "service", "description"]);
-        const amountIdx = col(columns, ["amount", "cost", "price"]);
-        const locationIdx = col(columns, ["location", "client location"]);
-        const teamIdx = col(columns, ["team"]);
-
-        const rows: Array<{ date: string; clientName: string; serviceType: string; description?: string; location?: string; amount: number; teamMembers: number }> = [];
-        for (let i = headerIndex + 1; i < data.length; i++) {
-          const r = data[i];
-          const clientName = cell(r, clientIdx);
-          if (!clientName || /^expense/i.test(clientName) || /total/i.test(clientName)) continue;
-          const serviceRaw = cell(r, serviceIdx);
-          if (/^expense$/i.test(serviceRaw)) continue;
-          const date = parseDateToISO(cell(r, dateIdx));
-          if (!date) continue;
-          const teamRaw = cell(r, teamIdx);
-          rows.push({
-            date,
-            clientName,
-            serviceType: normalizeService(serviceRaw),
-            description: serviceRaw || undefined,
-            location: cell(r, locationIdx) || undefined,
-            amount: parseKES(cell(r, amountIdx)),
-            teamMembers: teamRaw ? (parseInt(teamRaw, 10) || 0) : 0,
-          });
-        }
-        if (rows.length === 0) {
-          toast({ title: "No valid job rows found in CSV", variant: "destructive" });
-          return;
-        }
-        setImportPreview(rows);
+        setImportPreview(parsed.rows);
       }
     });
     e.target.value = "";
