@@ -3,6 +3,7 @@ import { db, jobsTable, clientsTable, settingsTable, activityLogTable, receiptsT
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { generateClientCode } from "../lib/client-code";
 import { logger } from "../lib/logger";
+import { resolveClientMatch } from "../lib/client-match";
 import {
   ListJobsQueryParams,
   CreateJobBody,
@@ -41,36 +42,41 @@ async function linkOrCreateClient(
   username: string,
 ): Promise<number | null> {
   const trimmedName = name.trim();
-  if (!trimmedName) return null;
-  const trimmedPhone = phone?.trim() || null;
 
-  const [existing] = await db
-    .select()
-    .from(clientsTable)
-    .where(sql`lower(trim(${clientsTable.name})) = lower(${trimmedName})`)
-    .limit(1);
+  const candidates = trimmedName
+    ? await db
+        .select()
+        .from(clientsTable)
+        .where(sql`lower(trim(${clientsTable.name})) = lower(${trimmedName})`)
+        .limit(1)
+    : [];
 
-  if (existing) {
-    if (trimmedPhone && !existing.phone) {
+  const decision = resolveClientMatch(name, phone, candidates);
+
+  if (decision.kind === "skip") return null;
+
+  if (decision.kind === "match") {
+    if (decision.backfillPhone) {
       await db.update(clientsTable)
-        .set({ phone: trimmedPhone, lastEditedBy: username, lastEditedAt: new Date() })
-        .where(eq(clientsTable.id, existing.id));
+        .set({ phone: decision.backfillPhone, lastEditedBy: username, lastEditedAt: new Date() })
+        .where(eq(clientsTable.id, decision.id));
     }
-    return existing.id;
+    return decision.id;
   }
 
+  // decision.kind === "create"
   const clientCode = await generateClientCode();
   const [created] = await db.insert(clientsTable).values({
     clientCode,
-    name: trimmedName,
-    phone: trimmedPhone,
+    name: decision.trimmedName,
+    phone: decision.trimmedPhone,
     location: location?.trim() || null,
     status: "New",
     firstVisitDate: date,
     createdBy: username,
   }).returning();
 
-  await logActivity(username, "Added", "Client", created.id, `${trimmedName} (${clientCode}) — auto-added from visit`);
+  await logActivity(username, "Added", "Client", created.id, `${decision.trimmedName} (${clientCode}) — auto-added from visit`);
   return created.id;
 }
 
