@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "GFpWJXewB0_ozjdryrrHM"
+uri = "file://.local/outputs/GSC-Internal-Hub.pdf"
+type = "pdf"
+title = "GSC Internal Hub.pdf"

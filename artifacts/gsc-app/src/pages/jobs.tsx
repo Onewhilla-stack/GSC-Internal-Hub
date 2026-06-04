@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, useGetSettings, useListReceipts, getListJobsQueryKey, getListReceiptsQueryKey, getGetReceiptsSummaryQueryKey } from "@workspace/api-client-react";
+import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, useGetSettings, useListReceipts, getListJobsQueryKey, getListClientsQueryKey, getListReceiptsQueryKey, getGetReceiptsSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +36,7 @@ const jobSchema = z.object({
   description: z.string().optional(),
   location: z.string().optional(),
   amount: z.coerce.number().min(0, "Invalid amount"),
-  teamMembers: z.coerce.number().min(1, "At least 1 member"),
+  teamMembers: z.coerce.number().min(0, "Cannot be negative"),
 });
 
 type JobFormData = z.infer<typeof jobSchema>;
@@ -45,7 +45,7 @@ const editJobSchema = z.object({
   date: z.string().min(1, "Date required"),
   clientName: z.string().min(1, "Client name required"),
   location: z.string().optional(),
-  teamMembers: z.coerce.number().min(1, "At least 1 member"),
+  teamMembers: z.coerce.number().min(0, "Cannot be negative"),
   serviceType: z.string().optional(),
   description: z.string().optional(),
   amount: z.coerce.number().min(0).optional(),
@@ -65,7 +65,7 @@ export default function Jobs() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
-  const { from, to } = useDateRange();
+  const { from, to, applyPreset } = useDateRange();
   const [editJob, setEditJob] = useState<{ id: number } | null>(null);
   const [syncReceipts, setSyncReceipts] = useState(true);
   const [importPreview, setImportPreview] = useState<ImportRow[] | null>(null);
@@ -108,8 +108,15 @@ export default function Jobs() {
 
   const createJob = useCreateJob({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_data, vars) => {
+        // Switch to "this-month" if the logged job is in the current month so it
+        // becomes visible immediately even when the filter was showing last month.
+        const jobDate: string = (vars as { data?: { date?: string } })?.data?.date ?? "";
+        const now = new Date();
+        const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        if (jobDate.startsWith(currentMonthPrefix)) applyPreset("this-month");
         queryClient.invalidateQueries({ queryKey: jobsKey });
+        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
         form.reset({ ...form.getValues(), clientName: "", clientPhone: "", amount: 0, location: "", description: "" });
         toast({ title: "Job logged successfully" });
       }
@@ -142,6 +149,7 @@ export default function Jobs() {
     mutation: {
       onSuccess: (res) => {
         queryClient.invalidateQueries({ queryKey: jobsKey });
+        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
         setImportPreview(null);
         toast({ title: `Imported ${res.imported} jobs${res.errors ? ` (${res.errors} skipped)` : ""}` });
       },
@@ -188,13 +196,13 @@ export default function Jobs() {
 
   const amount = form.watch("amount");
   const teamMembers = form.watch("teamMembers");
-  const wages = (teamMembers || 1) * wageRate;
+  const wages = (Number(teamMembers) || 0) * wageRate;
   const netIncome = (amount || 0) - wages;
 
   const editTotal = isMultiEdit
     ? editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
     : (Number(editAmount) || 0);
-  const editWages = (Number(editTeamMembers) || 1) * wageRate;
+  const editWages = (Number(editTeamMembers) || 0) * wageRate;
   const editNetIncome = editTotal - editWages;
 
   // Mirror what the server stores for imported jobs: wages = teamMembers × the
@@ -292,7 +300,7 @@ export default function Jobs() {
                 <FormItem className="lg:col-span-2"><FormLabel>Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet, 5-seater, 8kg..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
               )} />
               <FormField control={form.control} name="teamMembers" render={({ field }) => (
-                <FormItem><FormLabel>Team</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl></FormItem>
+                <FormItem><FormLabel>Team</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
               )} />
               <FormField control={form.control} name="amount" render={({ field }) => (
                 <FormItem><FormLabel>Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
@@ -520,7 +528,7 @@ export default function Jobs() {
                   <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
                 )} />
                 <FormField control={editForm.control} name="teamMembers" render={({ field }) => (
-                  <FormItem><FormLabel>Team</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel>Team</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
                 )} />
                 {!isMultiEdit && (
                   <FormField control={editForm.control} name="amount" render={({ field }) => (
