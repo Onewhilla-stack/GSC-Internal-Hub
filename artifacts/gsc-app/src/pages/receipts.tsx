@@ -346,6 +346,10 @@ export default function Receipts() {
     ? editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
     : (Number(editSingleAmount) || 0);
 
+  // When navigated from the Job Tracker with ?viewId=<receiptNumber>, auto-open
+  // the view dialog for that receipt once the list loads.
+  const prefillViewId = urlParams.get("viewId") ?? "";
+
   // Open create dialog when URL has a prefill client name
   useEffect(() => {
     if (prefillClient) {
@@ -371,6 +375,22 @@ export default function Receipts() {
     },
     { query: { queryKey: listKey } }
   );
+
+  // When navigated here with ?viewId=<receiptNumber>, fetch that specific receipt
+  // (bypassing date range/status filters so it's always found) and auto-open the
+  // view dialog.
+  const viewIdKey = getListReceiptsQueryKey({ search: prefillViewId });
+  const { data: viewIdResults } = useListReceipts(
+    { search: prefillViewId },
+    { query: { queryKey: viewIdKey, enabled: !!prefillViewId } }
+  );
+  useEffect(() => {
+    if (!prefillViewId || !viewIdResults) return;
+    const match = (viewIdResults as ReceiptRow[]).find(
+      (r) => r.receiptNumber === prefillViewId
+    );
+    if (match) setViewReceipt(match);
+  }, [prefillViewId, viewIdResults]);
 
   const { data: summary } = useGetReceiptsSummary(
     { from, to },

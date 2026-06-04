@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, ReceiptText, Upload, Plus } from "lucide-react";
+import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useDateRange } from "@/lib/date-range";
 import { DateRangePicker } from "@/components/date-range-picker";
@@ -424,14 +425,35 @@ export default function Jobs() {
                       </TableCell>
                     )}
                     <TableCell className="text-center">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                      {jobReceipts.length > 0 ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="relative h-7 w-7"
-                              title={jobReceipts.length > 0 ? "Receipted — generate another" : "Generate receipt"}
+                              title="Receipted — view or generate"
+                            >
+                              <ReceiptText className="h-3.5 w-3.5 text-[#F5C518] fill-[#F5C518]/30" />
+                              <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-white">
+                                {jobReceipts.length}
+                              </span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-[200px]">
+                            {jobReceipts.map((r) => (
+                              <DropdownMenuItem
+                                key={r.id}
+                                className="gap-2 cursor-pointer"
+                                onClick={() => navigate(`/receipts?viewId=${encodeURIComponent(r.receiptNumber)}`)}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span className="font-mono text-xs">{r.receiptNumber}</span>
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer"
                               onClick={() => {
                                 const params = new URLSearchParams({
                                   client: job.clientName,
@@ -441,32 +463,46 @@ export default function Jobs() {
                                 if (job.items && job.items.length > 0) {
                                   params.set("items", JSON.stringify(job.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))));
                                 } else {
-                                  // Single-service job: description lives on the job itself,
-                                  // so carry it through as a one-item list (not service/amount
-                                  // alone) or the receipt loses the details.
                                   params.set("items", JSON.stringify([{ serviceType: job.serviceType, description: job.description ?? "", amount: job.amount }]));
                                 }
                                 navigate(`/receipts?${params.toString()}`);
                               }}
                             >
-                              <ReceiptText className={`h-3.5 w-3.5 ${jobReceipts.length > 0 ? "text-[#F5C518] fill-[#F5C518]/30" : "text-[#F5C518]"}`} />
-                              {jobReceipts.length > 0 && (
-                                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-white">
-                                  {jobReceipts.length}
-                                </span>
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          {jobReceipts.length > 0 && (
-                            <TooltipContent>
-                              <p className="font-medium">
-                                {jobReceipts.length} linked receipt{jobReceipts.length > 1 ? "s" : ""}
-                              </p>
-                              <p className="font-mono text-xs">{jobReceipts.map((r) => r.receiptNumber).join(", ")}</p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
+                              <Plus className="h-3.5 w-3.5 shrink-0" />
+                              Generate new receipt
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="relative h-7 w-7"
+                                title="Generate receipt"
+                                onClick={() => {
+                                  const params = new URLSearchParams({
+                                    client: job.clientName,
+                                    date: job.date.split("T")[0],
+                                    jobId: String(job.id),
+                                  });
+                                  if (job.items && job.items.length > 0) {
+                                    params.set("items", JSON.stringify(job.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))));
+                                  } else {
+                                    params.set("items", JSON.stringify([{ serviceType: job.serviceType, description: job.description ?? "", amount: job.amount }]));
+                                  }
+                                  navigate(`/receipts?${params.toString()}`);
+                                }}
+                              >
+                                <ReceiptText className="h-3.5 w-3.5 text-[#F5C518]" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Generate receipt</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </TableCell>
                   </TableRow>
                   );
