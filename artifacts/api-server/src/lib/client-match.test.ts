@@ -91,6 +91,32 @@ describe("resolveClientMatch — phone backfill decision", () => {
   });
 });
 
+describe("resolveClientMatch — same client regardless of capitalisation or surrounding spaces", () => {
+  const stored = { id: 99, name: "Alice", phone: null };
+
+  it("matches the exact stored name", () => {
+    expect(resolveClientMatch("Alice", undefined, [stored])).toMatchObject({ kind: "match", id: 99 });
+  });
+
+  it("matches all-lowercase input", () => {
+    expect(resolveClientMatch("alice", undefined, [stored])).toMatchObject({ kind: "match", id: 99 });
+  });
+
+  it("matches input with leading and trailing spaces", () => {
+    expect(resolveClientMatch("  Alice  ", undefined, [stored])).toMatchObject({ kind: "match", id: 99 });
+  });
+
+  it("all three variants resolve to the same record id", () => {
+    const variants = ["Alice", "alice", "  Alice  "];
+    const ids = variants.map((v) => {
+      const result = resolveClientMatch(v, undefined, [stored]);
+      expect(result.kind).toBe("match");
+      return (result as Extract<typeof result, { kind: "match" }>).id;
+    });
+    expect(new Set(ids).size).toBe(1);
+  });
+});
+
 describe("resolveClientMatch — no match (new client path)", () => {
   it("returns create when there are no candidates", () => {
     const result = resolveClientMatch("Eve Kamau", "0722222222", []);

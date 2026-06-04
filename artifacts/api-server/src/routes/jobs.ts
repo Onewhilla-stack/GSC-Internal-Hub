@@ -194,7 +194,22 @@ router.post("/jobs/import", requireAuth, async (req, res): Promise<void> => {
   for (const row of parsed.data.rows) {
     try {
       const { wages, netIncome } = computeJobMoney({ teamMembers: row.teamMembers, wageRate, amount: row.amount });
+
+      let linkedClientId: number | null = null;
+      try {
+        linkedClientId = await linkOrCreateClient(
+          row.clientName,
+          undefined,
+          row.location,
+          row.date,
+          username,
+        );
+      } catch (err) {
+        logger.warn({ err }, "Failed to auto-create/link client during CSV import; logging without client link");
+      }
+
       await db.insert(jobsTable).values({
+        clientId: linkedClientId,
         clientName: row.clientName,
         date: row.date,
         serviceType: row.serviceType,
