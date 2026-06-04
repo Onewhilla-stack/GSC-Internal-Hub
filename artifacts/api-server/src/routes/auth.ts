@@ -4,6 +4,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { LoginBody, UpdatePasswordBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { ensureMonthlyRentExpense } from "../lib/ensure-rent";
 
 const router = Router();
 
@@ -31,6 +32,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   req.session.userId = user.id;
   req.session.username = user.username;
   req.session.role = user.role;
+
+  ensureMonthlyRentExpense(user.username).catch(() => {});
 
   res.json({ id: user.id, username: user.username, role: user.role });
 });
