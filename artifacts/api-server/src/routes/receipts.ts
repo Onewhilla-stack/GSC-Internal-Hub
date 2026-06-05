@@ -38,6 +38,7 @@ function formatRow(r: typeof receiptsTable.$inferSelect) {
     ...r,
     items,
     amount: parseFloat(r.amount),
+    jobWasDeleted: r.jobWasDeleted ?? false,
     lastEditedAt: r.lastEditedAt?.toISOString() ?? null,
   };
 }

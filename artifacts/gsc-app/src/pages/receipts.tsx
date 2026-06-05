@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Eye, Download, Pencil, Trash2, ReceiptText, CheckCircle, Clock, AlertCircle, FileText, X } from "lucide-react";
+import { Search, Plus, Eye, Download, Pencil, Trash2, ReceiptText, CheckCircle, Clock, AlertCircle, AlertTriangle, FileText, X } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ReceiptItem = {
@@ -43,6 +43,7 @@ type ReceiptRow = {
   id: number;
   receiptNumber: string;
   jobId?: number | null;
+  jobWasDeleted?: boolean | null;
   clientName: string;
   serviceType: string;
   description?: string | null;
@@ -606,7 +607,17 @@ export default function Receipts() {
                 ) : (
                   (receipts as ReceiptRow[]).map((r) => (
                     <TableRow key={r.id} className="hover:bg-gray-50">
-                      <TableCell className="font-mono text-xs text-gray-600 whitespace-nowrap">{r.receiptNumber}</TableCell>
+                      <TableCell className="font-mono text-xs text-gray-600 whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          {r.receiptNumber}
+                          {r.jobWasDeleted && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-300 w-fit">
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              Source job deleted
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm whitespace-nowrap">{formatDate(r.date)}</TableCell>
                       <TableCell className="font-medium">{r.clientName}</TableCell>
                       <TableCell className="text-sm text-gray-600">
@@ -841,6 +852,14 @@ export default function Receipts() {
               {viewReceipt?.receiptNumber}
             </DialogTitle>
           </DialogHeader>
+          {viewReceipt?.jobWasDeleted && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-amber-800">
+                <span className="font-medium">Source job deleted.</span> This receipt was linked to a job that no longer exists.
+              </p>
+            </div>
+          )}
           {viewReceipt && <ReceiptPreview receipt={viewReceipt} />}
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setViewReceipt(null)}>Close</Button>
@@ -865,6 +884,16 @@ export default function Receipts() {
               onSubmit={editForm.handleSubmit(submitEdit)}
               className="space-y-4"
             >
+              {/* Source job deleted warning */}
+              {editReceipt?.jobWasDeleted && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-amber-800">
+                    <span className="font-medium">Source job deleted.</span> This receipt was originally linked to a job that has since been deleted.
+                  </p>
+                </div>
+              )}
+
               {/* Drift warning — this receipt no longer matches its source job */}
               {isDirector && receiptDiffersFromJob && (
                 <div className="rounded-md border border-orange-300 bg-orange-50 p-3 text-sm">

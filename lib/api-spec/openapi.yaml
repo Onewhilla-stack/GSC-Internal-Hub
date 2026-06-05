@@ -1326,6 +1326,7 @@ components:
         id: { type: integer }
         receiptNumber: { type: string }
         jobId: { type: ["integer", "null"] }
+        jobWasDeleted: { type: boolean }
         clientName: { type: string }
         serviceType: { type: string }
         description: { type: ["string", "null"] }

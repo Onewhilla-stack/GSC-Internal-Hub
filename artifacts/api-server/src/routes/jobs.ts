@@ -356,7 +356,7 @@ router.delete("/jobs/:id", requireAuth, requireDirector, async (req, res): Promi
   // job would leave them with a dangling reference (a 404 source job), so clear
   // the link instead of orphaning it — the receipt itself is kept intact.
   const unlinked = await db.update(receiptsTable)
-    .set({ jobId: null })
+    .set({ jobId: null, jobWasDeleted: true })
     .where(eq(receiptsTable.jobId, params.data.id))
     .returning();
 

@@ -12,6 +12,7 @@ export interface Receipt {
   receiptNumber: string;
   /** @nullable */
   jobId?: number | null;
+  jobWasDeleted?: boolean;
   clientName: string;
   serviceType: string;
   /** @nullable */

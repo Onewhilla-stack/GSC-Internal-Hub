@@ -8,6 +8,13 @@
       "when": 1780523356217,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780647421211,
+      "tag": "0001_slimy_dagger",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "receipts" ADD COLUMN "job_was_deleted" boolean DEFAULT false NOT NULL;

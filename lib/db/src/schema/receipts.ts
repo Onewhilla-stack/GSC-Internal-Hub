@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, numeric, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, numeric, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -20,6 +20,7 @@ export const receiptsTable = pgTable("receipts", {
   date: text("date").notNull(),
   paymentStatus: text("payment_status").notNull().default("Pending"),
   notes: text("notes"),
+  jobWasDeleted: boolean("job_was_deleted").notNull().default(false),
   createdBy: text("created_by"),
   lastEditedBy: text("last_edited_by"),
   lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
