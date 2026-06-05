@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   useGetPLSummary, 
   useGetRevenueTrend, 
   useGetKeyStats,
   useGetMonthDrill,
   getGetMonthDrillQueryKey,
+  useGetServiceRevenueTrend,
 } from "@workspace/api-client-react";
 import { formatKES } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/spinner";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, LabelList } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, LabelList, Legend } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
@@ -103,11 +104,13 @@ function renderRevenueDeltaLabel(props: RevenueDeltaLabelProps) {
 
 export default function Analytics() {
   const [drillMonth, setDrillMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [trendLookback, setTrendLookback] = useState(12);
   
   const { data: plSummary, isLoading: plLoading } = useGetPLSummary();
   const { data: revTrend } = useGetRevenueTrend();
   const { data: keyStats, isLoading: statsLoading } = useGetKeyStats();
   const { data: monthDrill } = useGetMonthDrill({ month: drillMonth }, { query: { enabled: !!drillMonth, queryKey: getGetMonthDrillQueryKey({ month: drillMonth }) } });
+  const { data: serviceTrend, isLoading: trendLoading } = useGetServiceRevenueTrend({ months: trendLookback });
 
   const expBreakdown = monthDrill?.expenseBreakdown ?? [];
   const serviceCounts = keyStats?.serviceCounts ?? [];
@@ -115,6 +118,18 @@ export default function Analytics() {
   // Revenue per service with month-over-month delta — computed server-side via
   // aggregateRevenueByService so multi-service line items are attributed correctly.
   const serviceRevenue = monthDrill?.serviceRevenue ?? [];
+
+  // Flatten the nested revenue map into a flat array for Recharts
+  const trendChartData = useMemo(() => {
+    if (!serviceTrend) return [];
+    return serviceTrend.months.map(m => {
+      const row: Record<string, string | number> = { month: m.month };
+      for (const [svc, val] of Object.entries(m.revenue ?? {})) {
+        row[svc] = val;
+      }
+      return row;
+    });
+  }, [serviceTrend]);
 
   return (
     <div className="space-y-6">
@@ -183,6 +198,53 @@ export default function Analytics() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-sm border-t-4 border-t-primary">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Service Revenue Trends (Top 5)</CardTitle>
+            <Select value={String(trendLookback)} onValueChange={(v) => setTrendLookback(Number(v))}>
+              <SelectTrigger className="w-36 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="6">Last 6 months</SelectItem>
+                <SelectItem value="12">Last 12 months</SelectItem>
+                <SelectItem value="24">Last 24 months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className="h-80">
+          {trendLoading ? (
+            <div className="flex justify-center items-center h-full"><Spinner /></div>
+          ) : trendChartData.length > 0 && serviceTrend && serviceTrend.services.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendChartData} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                <YAxis tickLine={false} axisLine={false} tickFormatter={(val) => val >= 1000 ? `${val / 1000}k` : val} tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(val: number, name: string) => [formatKES(val), name]} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                {serviceTrend.services.map((svc, idx) => (
+                  <Line
+                    key={svc}
+                    type="monotone"
+                    dataKey={svc}
+                    stroke={COLORS[idx % COLORS.length]}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center text-gray-500 h-full">No job data to show</div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="shadow-sm border-t-4 border-t-secondary">
         <CardHeader>

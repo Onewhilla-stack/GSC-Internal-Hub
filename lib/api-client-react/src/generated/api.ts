@@ -42,6 +42,7 @@ import type {
   GetMonthDrillParams,
   GetReceiptsSummaryParams,
   GetRevenueByServiceParams,
+  GetServiceRevenueTrendParams,
   GetTopClientsParams,
   HealthStatus,
   ImportResult,
@@ -64,6 +65,7 @@ import type {
   ReceiptUpdate,
   ReceiptsSummary,
   ServiceRevenue,
+  ServiceRevenueTrend,
   Settings,
   SettingsUpdate,
   TopClient,
@@ -3118,6 +3120,90 @@ export function useGetMonthDrill<TData = Awaited<ReturnType<typeof getMonthDrill
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMonthDrillQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetServiceRevenueTrendUrl = (params?: GetServiceRevenueTrendParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/service-revenue-trend?${stringifiedParams}` : `/api/analytics/service-revenue-trend`
+}
+
+/**
+ * @summary Per-service revenue over the last N months (top 5 services by total)
+ */
+export const getServiceRevenueTrend = async (params?: GetServiceRevenueTrendParams, options?: RequestInit): Promise<ServiceRevenueTrend> => {
+
+  return customFetch<ServiceRevenueTrend>(getGetServiceRevenueTrendUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetServiceRevenueTrendQueryKey = (params?: GetServiceRevenueTrendParams,) => {
+    return [
+    `/api/analytics/service-revenue-trend`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetServiceRevenueTrendQueryOptions = <TData = Awaited<ReturnType<typeof getServiceRevenueTrend>>, TError = ErrorType<unknown>>(params?: GetServiceRevenueTrendParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getServiceRevenueTrend>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetServiceRevenueTrendQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getServiceRevenueTrend>>> = ({ signal }) => getServiceRevenueTrend(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getServiceRevenueTrend>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetServiceRevenueTrendQueryResult = NonNullable<Awaited<ReturnType<typeof getServiceRevenueTrend>>>
+export type GetServiceRevenueTrendQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-service revenue over the last N months (top 5 services by total)
+ */
+
+export function useGetServiceRevenueTrend<TData = Awaited<ReturnType<typeof getServiceRevenueTrend>>, TError = ErrorType<unknown>>(
+ params?: GetServiceRevenueTrendParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getServiceRevenueTrend>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetServiceRevenueTrendQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

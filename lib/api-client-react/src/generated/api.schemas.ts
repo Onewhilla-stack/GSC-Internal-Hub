@@ -395,6 +395,18 @@ export interface MonthDrill {
   serviceRevenue: ServiceRevenueDelta[];
 }
 
+export type ServiceRevenueTrendMonthRevenue = {[key: string]: number};
+
+export interface ServiceRevenueTrendMonth {
+  month: string;
+  revenue: ServiceRevenueTrendMonthRevenue;
+}
+
+export interface ServiceRevenueTrend {
+  services: string[];
+  months: ServiceRevenueTrendMonth[];
+}
+
 export interface Settings {
   wagePerPersonPerDay: number;
   monthlyRent: number;
@@ -561,6 +573,13 @@ to?: string;
 
 export type GetMonthDrillParams = {
 month: string;
+};
+
+export type GetServiceRevenueTrendParams = {
+/**
+ * Number of months to look back (default 12, max 24)
+ */
+months?: number;
 };
 
 export type ExportData200 = { [key: string]: unknown };

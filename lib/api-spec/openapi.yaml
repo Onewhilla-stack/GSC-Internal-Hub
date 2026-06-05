@@ -870,6 +870,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/MonthDrill"
 
+  /analytics/service-revenue-trend:
+    get:
+      operationId: getServiceRevenueTrend
+      tags: [analytics]
+      summary: Per-service revenue over the last N months (top 5 services by total)
+      parameters:
+        - in: query
+          name: months
+          schema:
+            type: integer
+            default: 12
+          description: "Number of months to look back (default 12, max 24)"
+      responses:
+        "200":
+          description: Service revenue trend
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRevenueTrend"
+
   # ─── SETTINGS ─────────────────────────────────────────────────────────────
   /settings:
     get:
@@ -1437,6 +1457,30 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ServiceRevenueDelta"
+
+    ServiceRevenueTrendMonth:
+      type: object
+      required: [month, revenue]
+      properties:
+        month:
+          type: string
+        revenue:
+          type: object
+          additionalProperties:
+            type: number
+
+    ServiceRevenueTrend:
+      type: object
+      required: [services, months]
+      properties:
+        services:
+          type: array
+          items:
+            type: string
+        months:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceRevenueTrendMonth"
 
     # ── Settings ──
     Settings:

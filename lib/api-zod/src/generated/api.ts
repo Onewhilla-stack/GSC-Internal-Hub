@@ -828,6 +828,24 @@ export const GetMonthDrillResponse = zod.object({
 
 
 /**
+ * @summary Per-service revenue over the last N months (top 5 services by total)
+ */
+export const getServiceRevenueTrendQueryMonthsDefault = 12;
+
+export const GetServiceRevenueTrendQueryParams = zod.object({
+  "months": zod.coerce.number().default(getServiceRevenueTrendQueryMonthsDefault).describe('Number of months to look back (default 12, max 24)')
+})
+
+export const GetServiceRevenueTrendResponse = zod.object({
+  "services": zod.array(zod.string()),
+  "months": zod.array(zod.object({
+  "month": zod.string(),
+  "revenue": zod.record(zod.string(), zod.number())
+}))
+})
+
+
+/**
  * @summary Get all settings
  */
 export const GetSettingsResponse = zod.object({

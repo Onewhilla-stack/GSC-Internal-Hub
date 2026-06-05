@@ -201,4 +201,68 @@ router.get("/analytics/month-drill", requireAuth, async (req, res): Promise<void
   });
 });
 
+router.get("/analytics/service-revenue-trend", requireAuth, async (req, res): Promise<void> => {
+  const rawMonths = parseInt(String(req.query.months ?? "12"), 10);
+  const lookback = Math.min(Math.max(rawMonths, 1), 24);
+
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - lookback + 1, 1);
+  const startStr = start.toISOString().split("T")[0];
+
+  const rows = await db.select({
+    date: jobsTable.date,
+    serviceType: jobsTable.serviceType,
+    amount: jobsTable.amount,
+    items: jobsTable.items,
+  }).from(jobsTable).where(gte(jobsTable.date, startStr));
+
+  // Group rows by YYYY-MM month key
+  const byMonth = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const m = monthKey(row.date);
+    if (!byMonth.has(m)) byMonth.set(m, []);
+    byMonth.get(m)!.push(row);
+  }
+
+  // Aggregate revenue per service per month and track totals across all months
+  const serviceTotals = new Map<string, number>();
+  const monthServiceRevenue = new Map<string, Map<string, number>>();
+
+  const allMonths: string[] = [];
+  for (let i = 0; i < lookback; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - lookback + 1 + i, 1);
+    allMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  for (const m of allMonths) {
+    const monthRows = byMonth.get(m) ?? [];
+    const breakdown = aggregateRevenueByService(monthRows);
+    const serviceMap = new Map<string, number>();
+    for (const entry of breakdown) {
+      serviceMap.set(entry.serviceType, entry.revenue);
+      serviceTotals.set(entry.serviceType, (serviceTotals.get(entry.serviceType) ?? 0) + entry.revenue);
+    }
+    monthServiceRevenue.set(m, serviceMap);
+  }
+
+  // Pick top 5 services by total revenue across the period
+  const TOP_N = 5;
+  const topServices = [...serviceTotals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_N)
+    .map(([s]) => s);
+
+  // Build the response: one row per month with revenue nested as a service→amount map
+  const months = allMonths.map(m => {
+    const serviceMap = monthServiceRevenue.get(m) ?? new Map();
+    const revenue: Record<string, number> = {};
+    for (const svc of topServices) {
+      revenue[svc] = Math.round((serviceMap.get(svc) ?? 0) * 100) / 100;
+    }
+    return { month: m, revenue };
+  });
+
+  res.json({ services: topServices, months });
+});
+
 export default router;
