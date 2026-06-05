@@ -3,3 +3,4 @@
 - [TanStack Query v5 inline options](tanstack-query-v5-quirk.md) — UseQueryOptions requires queryKey when passed inline; always import and include the query key getter alongside retry/enabled options
 - [wouter query params](wouter-query-params.md) — useLocation() returns path only (no ?query); use useSearch() to read query strings for prefill/deep links
 - [Multi-service job edit contract](multi-service-job-contract.md) — PATCH /jobs: items array=multi, omitted=keep stored, null=collapse to single; wages charged once regardless of item count
+- [Startup migrations pattern](startup-migrations.md) — new DB columns must ALSO be in runStartupMigrations(); drizzle-kit push can't run non-interactively.

@@ -141,7 +141,8 @@ export default function Jobs() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: jobsKey });
         toast({ title: "Job deleted" });
-      }
+      },
+      onError: () => toast({ title: "Delete failed — please try again", variant: "destructive" }),
     }
   });
 
