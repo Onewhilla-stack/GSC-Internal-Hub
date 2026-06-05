@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink, Printer } from "lucide-react";
+import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink, Printer, ChevronUp, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { StatusBadge, worstStatus } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth";
@@ -170,6 +170,17 @@ export default function Jobs() {
       if (!prev) return prev;
       const next = prev.filter((_, i) => i !== idx);
       return next.length === 0 ? null : next;
+    });
+  }
+
+  function movePreviewRow(idx: number, direction: "up" | "down") {
+    setImportPreview((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= next.length) return prev;
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next;
     });
   }
 
@@ -670,7 +681,7 @@ export default function Jobs() {
                   {isDirector && <TableHead className="text-white text-right">Amount</TableHead>}
                   {isDirector && <TableHead className="text-white text-right">Wages</TableHead>}
                   {isDirector && <TableHead className="text-secondary font-bold text-right">Net</TableHead>}
-                  <TableHead className="w-8" />
+                  <TableHead className="w-16" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -714,15 +725,37 @@ export default function Jobs() {
                     {isDirector && <TableCell className="text-right font-mono text-sm text-red-600">{formatKES(r.wages)}</TableCell>}
                     {isDirector && <TableCell className="text-right font-mono text-sm font-bold text-green-600">{formatKES(r.netIncome)}</TableCell>}
                     <TableCell className="text-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-gray-400 hover:text-red-600"
-                        onClick={() => removePreviewRow(i)}
-                        title="Remove this row"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-400 hover:text-gray-700"
+                          onClick={() => movePreviewRow(i, "up")}
+                          disabled={i === 0}
+                          title="Move up"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-400 hover:text-gray-700"
+                          onClick={() => movePreviewRow(i, "down")}
+                          disabled={i === previewRows.length - 1}
+                          title="Move down"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-400 hover:text-red-600"
+                          onClick={() => removePreviewRow(i)}
+                          title="Remove this row"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
