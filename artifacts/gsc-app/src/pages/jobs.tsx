@@ -116,8 +116,7 @@ export default function Jobs() {
         const now = new Date();
         const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         if (jobDate.startsWith(currentMonthPrefix)) applyPreset("this-month");
-        queryClient.invalidateQueries({ queryKey: jobsKey });
-        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+        queryClient.invalidateQueries();
         form.reset({ ...form.getValues(), clientName: "", clientPhone: "", amount: 0, location: "", description: "" });
         toast({ title: "Job logged successfully" });
       }
@@ -127,9 +126,8 @@ export default function Jobs() {
   const updateJob = useUpdateJob({
     mutation: {
       onSuccess: (_data, vars) => {
-        queryClient.invalidateQueries({ queryKey: jobsKey });
         const synced = !!(vars?.data as { syncReceipts?: boolean } | undefined)?.syncReceipts;
-        if (synced) invalidateReceipts();
+        queryClient.invalidateQueries();
         setEditJob(null);
         toast({ title: synced ? "Job updated — linked receipt synced" : "Job updated" });
       }
@@ -139,7 +137,7 @@ export default function Jobs() {
   const deleteJob = useDeleteJob({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: jobsKey });
+        queryClient.invalidateQueries();
         toast({ title: "Job deleted" });
       },
       onError: () => toast({ title: "Delete failed — please try again", variant: "destructive" }),
@@ -150,8 +148,7 @@ export default function Jobs() {
   const importJobs = useImportJobs({
     mutation: {
       onSuccess: (res) => {
-        queryClient.invalidateQueries({ queryKey: jobsKey });
-        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+        queryClient.invalidateQueries();
         setImportPreview(null);
         toast({ title: `Imported ${res.imported} jobs${res.errors ? ` (${res.errors} skipped)` : ""}` });
       },

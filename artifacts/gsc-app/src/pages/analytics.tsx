@@ -122,10 +122,10 @@ export default function Analytics() {
   // Flatten the nested revenue map into a flat array for Recharts
   const trendChartData = useMemo(() => {
     if (!serviceTrend) return [];
-    return serviceTrend.months.map(m => {
+    return serviceTrend.months.map((m: { month: string; revenue: Record<string, number> }) => {
       const row: Record<string, string | number> = { month: m.month };
       for (const [svc, val] of Object.entries(m.revenue ?? {})) {
-        row[svc] = val;
+        row[svc] = val as number;
       }
       return row;
     });
@@ -226,7 +226,7 @@ export default function Analytics() {
                 <YAxis tickLine={false} axisLine={false} tickFormatter={(val) => val >= 1000 ? `${val / 1000}k` : val} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(val: number, name: string) => [formatKES(val), name]} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                {serviceTrend.services.map((svc, idx) => (
+                {serviceTrend.services.map((svc: string, idx: number) => (
                   <Line
                     key={svc}
                     type="monotone"
