@@ -7,6 +7,7 @@ import {
   col,
   cell,
   parseJobCsvRows,
+  parseExpenseCsvRows,
 } from "./csv-import";
 
 // ---------------------------------------------------------------------------
@@ -491,6 +492,169 @@ describe("parseJobCsvRows", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toMatch(/header row/i);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseExpenseCsvRows — edge cases that must not silently produce empty rows
+// ---------------------------------------------------------------------------
+
+describe("parseExpenseCsvRows", () => {
+  it("returns an error for a completely empty CSV (no rows at all)", () => {
+    const result = parseExpenseCsvRows([]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/header row/i);
+    }
+  });
+
+  it("returns an error for a header-only CSV (no data rows below the header)", () => {
+    const result = parseExpenseCsvRows([
+      ["Date", "Category", "Description", "Amount"],
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/no valid expense rows/i);
+    }
+  });
+
+  it("returns an error when all data rows have zero or blank amounts", () => {
+    const data = [
+      ["Date", "Category", "Description", "Amount"],
+      ["01/01/2025", "Labour", "Staff wages", "0"],
+      ["02/01/2025", "Transport", "Fuel", "-"],
+      ["03/01/2025", "Other", "Misc", ""],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/no valid expense rows/i);
+    }
+  });
+
+  it("returns an error when all data rows have missing or unparseable dates", () => {
+    const data = [
+      ["Date", "Category", "Description", "Amount"],
+      ["", "Labour", "Staff wages", "5000"],
+      ["-", "Transport", "Fuel", "1200"],
+      ["not-a-date", "Other", "Misc", "800"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/no valid expense rows/i);
+    }
+  });
+
+  it("returns an error when a CSV has no recognisable Date and Amount columns", () => {
+    const data = [
+      ["Name", "Notes", "Ref"],
+      ["Alice", "Some note", "001"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/header row/i);
+    }
+  });
+
+  it("returns a valid result for a well-formed expense CSV", () => {
+    const data = [
+      ["Date", "Category", "Description", "Amount"],
+      ["15/03/2025", "Labour", "Staff wages", "5000"],
+      ["16/03/2025", "Transport", "Fuel reimbursement", "Ksh1,200"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows).toHaveLength(2);
+      expect(result.rows[0].date).toBe("2025-03-15");
+      expect(result.rows[0].category).toBe("Labour");
+      expect(result.rows[0].description).toBe("Staff wages");
+      expect(result.rows[0].amount).toBe(5000);
+      expect(result.rows[1].amount).toBe(1200);
+      expect(result.skippedZeroAmount).toBe(0);
+    }
+  });
+
+  it("skips zero-amount rows and counts them in skippedZeroAmount", () => {
+    const data = [
+      ["Date", "Category", "Description", "Amount"],
+      ["01/01/2025", "Labour", "Staff wages", "5000"],
+      ["02/01/2025", "Transport", "Fuel", "0"],
+      ["03/01/2025", "Other", "Misc", "-"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows).toHaveLength(1);
+      expect(result.skippedZeroAmount).toBe(2);
+    }
+  });
+
+  it("skips rows with missing dates but keeps valid ones", () => {
+    const data = [
+      ["Date", "Category", "Description", "Amount"],
+      ["", "Labour", "Staff wages", "5000"],
+      ["01/02/2025", "Transport", "Fuel", "1500"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].category).toBe("Transport");
+    }
+  });
+
+  it("defaults category to 'Other' when the column is absent", () => {
+    const data = [
+      ["Date", "Amount"],
+      ["01/01/2025", "3000"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows[0].category).toBe("Other");
+    }
+  });
+
+  it("defaults description to 'Imported expense' when the column is absent", () => {
+    const data = [
+      ["Date", "Amount"],
+      ["01/01/2025", "3000"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows[0].description).toBe("Imported expense");
+    }
+  });
+
+  it("accepts Ksh-prefixed amounts via parseKES", () => {
+    const data = [
+      ["Date", "Category", "Description", "Amount"],
+      ["01/01/2025", "Rent", "Monthly rent", "Ksh15,000.00"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows[0].amount).toBe(15000);
+    }
+  });
+
+  it("skips leading title rows to find the real header", () => {
+    const data = [
+      ["Gold Standard Cleaners — Expenses 2025"],
+      ["", "", ""],
+      ["Date", "Category", "Description", "Amount"],
+      ["01/01/2025", "Labour", "Staff wages", "5000"],
+    ];
+    const result = parseExpenseCsvRows(data);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].amount).toBe(5000);
     }
   });
 });

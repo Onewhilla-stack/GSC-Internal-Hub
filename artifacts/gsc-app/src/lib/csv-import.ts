@@ -186,3 +186,68 @@ export function parseJobCsvRows(data: string[][]): ParseJobCsvResult {
   }
   return { ok: true, rows, skippedZeroAmount };
 }
+
+// ---------------------------------------------------------------------------
+// parseExpenseCsvRows
+// ---------------------------------------------------------------------------
+
+export type ParsedExpenseRow = {
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+};
+
+export type ParseExpenseCsvResult =
+  | { ok: true; rows: ParsedExpenseRow[]; skippedZeroAmount: number }
+  | { ok: false; error: string };
+
+/**
+ * Parse a 2-D array of CSV cells (as returned by PapaParse with header:false)
+ * into a list of valid expense rows, applying the same safety checks as
+ * parseJobCsvRows.
+ *
+ * Returns `{ ok: false, error }` for any of these cases:
+ *  - No header row containing "date" and "amount" is found
+ *  - All data rows are filtered out (missing date or zero amount)
+ */
+export function parseExpenseCsvRows(data: string[][]): ParseExpenseCsvResult {
+  if (data.length === 0) {
+    return { ok: false, error: "Couldn't find a header row with Date and Amount columns" };
+  }
+
+  const header = findHeader(data, [/date/i, /amount/i]);
+  if (!header) {
+    return { ok: false, error: "Couldn't find a header row with Date and Amount columns" };
+  }
+
+  const { headerIndex, columns } = header;
+  const dateIdx = col(columns, ["date"]);
+  const categoryIdx = col(columns, ["category"]);
+  const descriptionIdx = col(columns, ["description", "note", "notes", "details"]);
+  const amountIdx = col(columns, ["amount", "cost", "price"]);
+
+  const rows: ParsedExpenseRow[] = [];
+  let skippedZeroAmount = 0;
+  for (let i = headerIndex + 1; i < data.length; i++) {
+    const r = data[i];
+    const date = parseDateToISO(cell(r, dateIdx));
+    if (!date) continue;
+    const amount = parseKES(cell(r, amountIdx));
+    if (amount === 0) {
+      skippedZeroAmount++;
+      continue;
+    }
+    rows.push({
+      date,
+      category: cell(r, categoryIdx) || "Other",
+      description: cell(r, descriptionIdx) || "Imported expense",
+      amount,
+    });
+  }
+
+  if (rows.length === 0) {
+    return { ok: false, error: "No valid expense rows found in CSV" };
+  }
+  return { ok: true, rows, skippedZeroAmount };
+}

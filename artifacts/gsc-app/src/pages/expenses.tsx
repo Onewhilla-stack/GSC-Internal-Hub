@@ -17,6 +17,7 @@ import { useDateRange } from "@/lib/date-range";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { Upload } from "lucide-react";
 import Papa from "papaparse";
+import { parseExpenseCsvRows } from "@/lib/csv-import";
 
 const CATEGORIES = ["Labour", "Tokens/Electricity", "Cleaning Supplies", "Transport", "Rent", "Water", "Wi-Fi", "Equipment", "Fumigation Chemicals", "Other"];
 
@@ -83,17 +84,18 @@ export default function Expenses() {
     if (!file) return;
 
     Papa.parse(file, {
-      header: true,
+      header: false,
       skipEmptyLines: true,
       complete: (results) => {
-        const rows = results.data.map((row: any) => ({
-          date: row.Date || new Date().toISOString().split('T')[0],
-          category: row.Category || "Other",
-          description: row.Description || "Imported expense",
-          amount: parseFloat(row.Amount) || 0,
-        }));
-        
-        importExpenses.mutate({ data: { rows } });
+        const parsed = parseExpenseCsvRows(results.data as string[][]);
+        if (!parsed.ok) {
+          toast({ title: "Import failed", description: parsed.error, variant: "destructive" });
+          return;
+        }
+        if (parsed.skippedZeroAmount > 0) {
+          toast({ title: `Skipped ${parsed.skippedZeroAmount} row(s) with zero amount` });
+        }
+        importExpenses.mutate({ data: { rows: parsed.rows } });
       }
     });
   };
