@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth";
 import { useDateRange } from "@/lib/date-range";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useLocation } from "wouter";
 import Papa from "papaparse";
 import { parseJobCsvRows } from "@/lib/csv-import";
@@ -70,6 +71,7 @@ export default function Jobs() {
   const [editJob, setEditJob] = useState<{ id: number } | null>(null);
   const [syncReceipts, setSyncReceipts] = useState(true);
   const [importPreview, setImportPreview] = useState<ImportRow[] | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: jobs, isLoading } = useListJobs({ from, to });
   const jobsKey = getListJobsQueryKey({ from, to });
 
@@ -166,11 +168,45 @@ export default function Jobs() {
   }
 
   function removePreviewRow(idx: number) {
-    setImportPreview((prev) => {
-      if (!prev) return prev;
-      const next = prev.filter((_, i) => i !== idx);
-      return next.length === 0 ? null : next;
+    if (!importPreview) return;
+    const removedRow = importPreview[idx];
+    if (!removedRow) return;
+
+    const next = importPreview.filter((_, i) => i !== idx);
+    setImportPreview(next.length === 0 ? null : next);
+
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+
+    const { dismiss } = toast({
+      title: "Row removed",
+      description: `${removedRow.clientName} — ${removedRow.serviceType}`,
+      duration: 5000,
+      action: (
+        <ToastAction
+          altText="Undo"
+          onClick={() => {
+            if (undoTimerRef.current) {
+              clearTimeout(undoTimerRef.current);
+              undoTimerRef.current = null;
+            }
+            setImportPreview((current) => {
+              const base = current ?? next;
+              const restored = [...base];
+              restored.splice(idx, 0, removedRow);
+              return restored;
+            });
+            dismiss();
+          }}
+        >
+          Undo
+        </ToastAction>
+      ),
     });
+
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null;
+      dismiss();
+    }, 5000);
   }
 
   function movePreviewRow(idx: number, direction: "up" | "down") {
