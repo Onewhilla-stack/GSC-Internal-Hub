@@ -231,6 +231,12 @@ export default function Jobs() {
           toast({ title: parsed.error, variant: "destructive" });
           return;
         }
+        if (parsed.skippedZeroAmount > 0) {
+          const n = parsed.skippedZeroAmount;
+          toast({
+            title: `${n} ${n === 1 ? "row" : "rows"} skipped — amount was 0 or blank`,
+          });
+        }
         setImportPreview(parsed.rows);
       }
     });

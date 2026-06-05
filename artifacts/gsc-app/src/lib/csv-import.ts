@@ -124,7 +124,7 @@ export type ParsedJobRow = {
 };
 
 export type ParseJobCsvResult =
-  | { ok: true; rows: ParsedJobRow[] }
+  | { ok: true; rows: ParsedJobRow[]; skippedZeroAmount: number }
   | { ok: false; error: string };
 
 /**
@@ -155,6 +155,7 @@ export function parseJobCsvRows(data: string[][]): ParseJobCsvResult {
   const teamIdx = col(columns, ["team"]);
 
   const rows: ParsedJobRow[] = [];
+  let skippedZeroAmount = 0;
   for (let i = headerIndex + 1; i < data.length; i++) {
     const r = data[i];
     const clientName = cell(r, clientIdx);
@@ -164,7 +165,10 @@ export function parseJobCsvRows(data: string[][]): ParseJobCsvResult {
     const date = parseDateToISO(cell(r, dateIdx));
     if (!date) continue;
     const amount = parseKES(cell(r, amountIdx));
-    if (amount === 0) continue;
+    if (amount === 0) {
+      skippedZeroAmount++;
+      continue;
+    }
     const teamRaw = cell(r, teamIdx);
     rows.push({
       date,
@@ -180,5 +184,5 @@ export function parseJobCsvRows(data: string[][]): ParseJobCsvResult {
   if (rows.length === 0) {
     return { ok: false, error: "No valid job rows found in CSV" };
   }
-  return { ok: true, rows };
+  return { ok: true, rows, skippedZeroAmount };
 }
