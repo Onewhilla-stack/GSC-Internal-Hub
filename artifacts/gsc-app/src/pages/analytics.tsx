@@ -48,10 +48,39 @@ function renderDeltaLabel(props: DeltaLabelProps) {
 type RevenueDeltaLabelProps = DeltaLabelProps & { value?: number | null };
 
 // Renders a KES revenue change indicator (e.g. ▲ +12k or ▼ -5k) at the end of
-// each revenue bar. Shows nothing when no prior-month data exists (null delta).
+// each revenue bar. Shows a "NEW" badge when no prior-month data exists (null delta).
 function renderRevenueDeltaLabel(props: RevenueDeltaLabelProps) {
   const { x = 0, y = 0, width = 0, height = 0, value } = props;
-  if (value === null || value === undefined) return <text />;
+  if (value === null || value === undefined) {
+    const badgeX = x + width + 6;
+    const badgeY = y + height / 2;
+    const badgeW = 34;
+    const badgeH = 16;
+    return (
+      <g>
+        <rect
+          x={badgeX}
+          y={badgeY - badgeH / 2}
+          width={badgeW}
+          height={badgeH}
+          rx={4}
+          ry={4}
+          fill="#29ABE2"
+        />
+        <text
+          x={badgeX + badgeW / 2}
+          y={badgeY}
+          fill="#ffffff"
+          fontSize={10}
+          fontWeight={700}
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          NEW
+        </text>
+      </g>
+    );
+  }
   const fill = value > 0 ? "#16a34a" : value < 0 ? "#E22929" : "#888888";
   const absK = Math.abs(value) >= 1000
     ? `${(Math.abs(value) / 1000).toFixed(1)}k`
@@ -231,7 +260,7 @@ export default function Analytics() {
                       formatter={(val: number, _name, item) => {
                         const delta = (item?.payload as { revenueDelta?: number | null } | undefined)?.revenueDelta;
                         if (delta === null || delta === undefined) {
-                          return [formatKES(val), "Revenue"];
+                          return [`${formatKES(val)} — first time this month`, "Revenue"];
                         }
                         const changeStr = delta > 0
                           ? `+${formatKES(delta)} vs. last month`
