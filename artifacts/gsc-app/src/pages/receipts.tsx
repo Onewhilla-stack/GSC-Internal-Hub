@@ -350,6 +350,9 @@ export default function Receipts() {
   // When navigated from the Job Tracker with ?viewId=<receiptNumber>, auto-open
   // the view dialog for that receipt once the list loads.
   const prefillViewId = urlParams.get("viewId") ?? "";
+  // ?printId=<receiptNumber> — same as viewId but also fires window.print()
+  const prefillPrintId = urlParams.get("printId") ?? "";
+  const [autoPrint, setAutoPrint] = useState(false);
 
   // Open create dialog when URL has a prefill client name
   useEffect(() => {
@@ -392,6 +395,35 @@ export default function Receipts() {
     );
     if (match) setViewReceipt(match);
   }, [prefillViewId, viewIdResults]);
+
+  // When navigated here with ?printId=<receiptNumber>, auto-open the receipt
+  // and immediately trigger the browser print dialog.
+  const printIdKey = getListReceiptsQueryKey({ search: prefillPrintId });
+  const { data: printIdResults } = useListReceipts(
+    { search: prefillPrintId },
+    { query: { queryKey: printIdKey, enabled: !!prefillPrintId } }
+  );
+  useEffect(() => {
+    if (!prefillPrintId || !printIdResults) return;
+    const match = (printIdResults as ReceiptRow[]).find(
+      (r) => r.receiptNumber === prefillPrintId
+    );
+    if (match) {
+      setViewReceipt(match);
+      setAutoPrint(true);
+    }
+  }, [prefillPrintId, printIdResults]);
+
+  // Once the receipt dialog is open and autoPrint is set, fire window.print()
+  // after a short delay to let the dialog finish rendering.
+  useEffect(() => {
+    if (!autoPrint || !viewReceipt) return;
+    const timer = setTimeout(() => {
+      window.print();
+      setAutoPrint(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [autoPrint, viewReceipt]);
 
   const { data: summary } = useGetReceiptsSummary(
     { from, to },

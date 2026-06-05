@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useListJobs, useCreateJob, useUpdateJob, useDeleteJob, useImportJobs, useGetSettings, useListReceipts, getListJobsQueryKey, getListClientsQueryKey, getListReceiptsQueryKey, getGetReceiptsSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink, Printer } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { useDateRange } from "@/lib/date-range";
@@ -425,14 +425,22 @@ export default function Jobs() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="min-w-[200px]">
                             {jobReceipts.map((r) => (
-                              <DropdownMenuItem
-                                key={r.id}
-                                className="gap-2 cursor-pointer"
-                                onClick={() => navigate(`/receipts?viewId=${encodeURIComponent(r.receiptNumber)}`)}
-                              >
-                                <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span className="font-mono text-xs">{r.receiptNumber}</span>
-                              </DropdownMenuItem>
+                              <React.Fragment key={r.id}>
+                                <DropdownMenuItem
+                                  className="gap-2 cursor-pointer"
+                                  onClick={() => navigate(`/receipts?viewId=${encodeURIComponent(r.receiptNumber)}`)}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0" />
+                                  <span className="font-mono text-xs">{r.receiptNumber}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="gap-2 cursor-pointer"
+                                  onClick={() => navigate(`/receipts?printId=${encodeURIComponent(r.receiptNumber)}`)}
+                                >
+                                  <Printer className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-xs">Print {r.receiptNumber}</span>
+                                </DropdownMenuItem>
+                              </React.Fragment>
                             ))}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
