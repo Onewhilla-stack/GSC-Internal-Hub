@@ -31,6 +31,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, Eye, Download, Pencil, Trash2, ReceiptText, CheckCircle, Clock, AlertCircle, AlertTriangle, FileText, X } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ReceiptItem = {
@@ -115,26 +116,6 @@ function servicesEqual(a: CanonicalService[], b: CanonicalService[]): boolean {
     it.serviceType === b[i].serviceType &&
     it.description === b[i].description &&
     Math.abs(it.amount - b[i].amount) < 0.005
-  );
-}
-
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    Paid: "bg-green-100 text-green-800 border-green-200",
-    Pending: "bg-red-100 text-red-800 border-red-200",
-    Partial: "bg-orange-100 text-orange-800 border-orange-200",
-  };
-  const icons: Record<string, React.ReactNode> = {
-    Paid: <CheckCircle className="h-3 w-3 mr-1" />,
-    Pending: <Clock className="h-3 w-3 mr-1" />,
-    Partial: <AlertCircle className="h-3 w-3 mr-1" />,
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${colors[status] ?? "bg-gray-100 text-gray-700 border-gray-200"}`}>
-      {icons[status]}
-      {status}
-    </span>
   );
 }
 

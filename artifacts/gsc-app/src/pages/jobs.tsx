@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink, Printer } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { StatusBadge, worstStatus } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth";
 import { useDateRange } from "@/lib/date-range";
 import { DateRangePicker } from "@/components/date-range-picker";
@@ -409,6 +410,7 @@ export default function Jobs() {
                     )}
                     <TableCell className="text-center">
                       {jobReceipts.length > 0 ? (
+                        <div className="flex flex-col items-center gap-1">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -464,6 +466,29 @@ export default function Jobs() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        {isDirector && (() => {
+                          const worst = worstStatus(jobReceipts.map((r) => r.paymentStatus ?? "Pending"));
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-default">
+                                    <StatusBadge status={worst} />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="text-xs space-y-1 max-w-[180px]">
+                                  {jobReceipts.map((r) => (
+                                    <div key={r.id} className="flex items-center justify-between gap-2">
+                                      <span className="font-mono">{r.receiptNumber}</span>
+                                      <StatusBadge status={r.paymentStatus ?? "Pending"} />
+                                    </div>
+                                  ))}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        })()}
+                        </div>
                       ) : (
                         <TooltipProvider>
                           <Tooltip>
