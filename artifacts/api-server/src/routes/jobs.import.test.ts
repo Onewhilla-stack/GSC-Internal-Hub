@@ -274,6 +274,82 @@ describe("POST /jobs/import — client deduplication: new client name", () => {
   });
 });
 
+describe("POST /jobs/import — client deduplication: two sequential import batches", () => {
+  it("creates only one client when the same name arrives in two separate imports with different casing", async () => {
+    const app = buildApp();
+
+    // Use a timestamp-embedded name that is guaranteed not to exist in the DB
+    // beforehand, so the assertions and cleanup are deterministic and safe.
+    const uniqueName = `TwoBatch-${Date.now()}`;
+    const lowerName = uniqueName.toLowerCase();
+
+    // Verify the name truly doesn't exist yet (sanity-check for isolation).
+    const beforeCount = (await fetchClientsByName(uniqueName)).length;
+    expect(beforeCount).toBe(0);
+
+    // ── First batch ──────────────────────────────────────────────────────────
+    // The handler must auto-create a new client for this previously-unknown name.
+    const res1 = await request(app)
+      .post("/jobs/import")
+      .send({ rows: [{ clientName: uniqueName, date: "2024-08-01", serviceType: "Carpet Cleaning", amount: 3000, teamMembers: 1 }] });
+    expect(res1.status).toBe(200);
+    expect(res1.body.imported).toBe(1);
+    expect(res1.body.errors).toBe(0);
+
+    // Exactly one client must now exist for this unique name.
+    const clientsAfterFirst = await fetchClientsByName(uniqueName);
+    expect(clientsAfterFirst).toHaveLength(1);
+    const clientId = clientsAfterFirst[0].id;
+    // Register for cleanup — this client was created by this test.
+    clientIds.push(clientId);
+
+    const jobsAfterFirst = await db
+      .select({ id: jobsTable.id })
+      .from(jobsTable)
+      .where(
+        and(
+          eq(jobsTable.clientId, clientId),
+          eq(jobsTable.date, "2024-08-01"),
+          eq(jobsTable.createdBy, "test-import"),
+        ),
+      );
+    expect(jobsAfterFirst).toHaveLength(1);
+    jobIds.push(jobsAfterFirst[0].id);
+
+    // ── Second batch ─────────────────────────────────────────────────────────
+    // The lowercase variant must match the existing client, not create a second one.
+    const res2 = await request(app)
+      .post("/jobs/import")
+      .send({ rows: [{ clientName: lowerName, date: "2024-08-02", serviceType: "Carpet Cleaning", amount: 4000, teamMembers: 1 }] });
+    expect(res2.status).toBe(200);
+    expect(res2.body.imported).toBe(1);
+    expect(res2.body.errors).toBe(0);
+
+    // Still exactly one client row for this unique name — no duplicate was created.
+    const clientsAfterSecond = await fetchClientsByName(uniqueName);
+    expect(clientsAfterSecond).toHaveLength(1);
+    expect(clientsAfterSecond[0].id).toBe(clientId);
+
+    // Both imported jobs must carry the same clientId.
+    const allJobs = await db
+      .select({ id: jobsTable.id, clientId: jobsTable.clientId })
+      .from(jobsTable)
+      .where(
+        and(
+          eq(jobsTable.clientId, clientId),
+          eq(jobsTable.createdBy, "test-import"),
+        ),
+      );
+    expect(allJobs).toHaveLength(2);
+    for (const job of allJobs) {
+      expect(job.clientId).toBe(clientId);
+    }
+    // Track the second job id for cleanup.
+    const secondId = allJobs.find((j) => !jobIds.includes(j.id))?.id;
+    if (secondId != null) jobIds.push(secondId);
+  });
+});
+
 describe("POST /jobs/import — client deduplication: blank client name", () => {
   it("inserts the job with no clientId when the client name is blank", async () => {
     const app = buildApp();
