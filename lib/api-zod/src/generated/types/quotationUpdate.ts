@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { QuotationItemInput } from './quotationItemInput';
+import type { QuotationUpdateStatus } from './quotationUpdateStatus';
 
 export interface QuotationUpdate {
   clientName?: string;
@@ -14,7 +15,7 @@ export interface QuotationUpdate {
   date?: string;
   /** @nullable */
   expiryDate?: string | null;
-  status?: string;
+  status?: QuotationUpdateStatus;
   /** @nullable */
   notes?: string | null;
   /** @minItems 1 */

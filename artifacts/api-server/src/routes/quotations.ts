@@ -109,9 +109,9 @@ router.patch("/quotations/:id", requireAuth, async (req, res): Promise<void> => 
 
   const username = req.session.username!;
 
-  // Only directors may change status or edit line items/fields.
-  if (req.session.role !== "director" && (parsed.data.status !== undefined || parsed.data.items !== undefined)) {
-    res.status(403).json({ error: "Director access required to update quotation details" });
+  // All quotation edits are director-only; associates may only view and print.
+  if (req.session.role !== "director") {
+    res.status(403).json({ error: "Director access required to update quotations" });
     return;
   }
 

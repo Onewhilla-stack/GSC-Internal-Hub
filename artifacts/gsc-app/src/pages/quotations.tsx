@@ -317,8 +317,10 @@ export default function Quotations() {
   const createItems = useFieldArray({ control: createForm.control, name: "items" });
 
   // Edit form (status only for non-directors; full fields for directors)
-  const editForm = useForm<z.infer<typeof quotationSchema> & { status: string }>({
-    resolver: zodResolver(quotationSchema.extend({ status: z.string() })),
+  const STATUSES = ["Pending", "Accepted", "Declined"] as const;
+  type QuotationStatus = typeof STATUSES[number];
+  const editForm = useForm<z.infer<typeof quotationSchema> & { status: QuotationStatus }>({
+    resolver: zodResolver(quotationSchema.extend({ status: z.enum(STATUSES) })),
     defaultValues: { clientName: "", location: "", date: "", expiryDate: "", notes: "", status: "Pending", items: [{ serviceType: "", description: "", amount: 0 }] },
   });
   const editItems = useFieldArray({ control: editForm.control, name: "items" });
@@ -365,7 +367,7 @@ export default function Quotations() {
       date: q.date,
       expiryDate: q.expiryDate ?? "",
       notes: q.notes ?? "",
-      status: q.status,
+      status: q.status as QuotationStatus,
       items: q.items.map(it => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount })),
     });
     setEditQuotation(q);
@@ -384,7 +386,7 @@ export default function Quotations() {
     });
   }
 
-  function submitEdit(data: z.infer<typeof quotationSchema> & { status: string }) {
+  function submitEdit(data: z.infer<typeof quotationSchema> & { status: QuotationStatus }) {
     if (!editQuotation) return;
     updateQuotation.mutate({
       id: editQuotation.id,
@@ -505,9 +507,11 @@ export default function Quotations() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewQuotation(q)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(q)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          {isDirector && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(q)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
                           {isDirector && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

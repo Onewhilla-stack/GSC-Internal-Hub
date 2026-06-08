@@ -451,6 +451,15 @@ export interface QuotationInput {
   items: QuotationItemInput[];
 }
 
+export type QuotationUpdateStatus = typeof QuotationUpdateStatus[keyof typeof QuotationUpdateStatus];
+
+
+export const QuotationUpdateStatus = {
+  Pending: 'Pending',
+  Accepted: 'Accepted',
+  Declined: 'Declined',
+} as const;
+
 export interface QuotationUpdate {
   clientName?: string;
   /** @nullable */
@@ -458,7 +467,7 @@ export interface QuotationUpdate {
   date?: string;
   /** @nullable */
   expiryDate?: string | null;
-  status?: string;
+  status?: QuotationUpdateStatus;
   /** @nullable */
   notes?: string | null;
   /** @minItems 1 */

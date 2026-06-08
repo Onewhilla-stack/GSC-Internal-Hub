@@ -59,6 +59,7 @@ export * from './quotationInput';
 export * from './quotationItem';
 export * from './quotationItemInput';
 export * from './quotationUpdate';
+export * from './quotationUpdateStatus';
 export * from './receipt';
 export * from './receiptInput';
 export * from './receiptItem';

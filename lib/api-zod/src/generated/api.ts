@@ -785,7 +785,7 @@ export const UpdateQuotationBody = zod.object({
   "location": zod.string().nullish(),
   "date": zod.string().optional(),
   "expiryDate": zod.string().nullish(),
-  "status": zod.string().optional(),
+  "status": zod.enum(['Pending', 'Accepted', 'Declined']).optional(),
   "notes": zod.string().nullish(),
   "items": zod.array(zod.object({
   "serviceType": zod.string(),

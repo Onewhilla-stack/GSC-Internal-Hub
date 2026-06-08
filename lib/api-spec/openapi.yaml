@@ -1622,7 +1622,9 @@ components:
         location: { type: ["string", "null"] }
         date: { type: string }
         expiryDate: { type: ["string", "null"] }
-        status: { type: string }
+        status:
+          type: string
+          enum: [Pending, Accepted, Declined]
         notes: { type: ["string", "null"] }
         items:
           type: array
