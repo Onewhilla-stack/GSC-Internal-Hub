@@ -32,6 +32,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, Eye, Download, Pencil, Trash2, ReceiptText, CheckCircle, Clock, AlertCircle, AlertTriangle, FileText, X } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import gscLogo from "@assets/GSC_Logo_1780918691102.png";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ReceiptItem = {
@@ -143,8 +144,17 @@ function SummaryCard({ title, count, amount, color, icon, showAmount }: {
 function ReceiptPreview({ receipt, isPrint = false }: { receipt: Partial<ReceiptRow> & { receiptNumber: string; paymentStatus: string }; isPrint?: boolean }) {
   const lineItems = receipt.items ?? [];
   return (
-    <div className={`bg-white p-8 w-full max-w-sm mx-auto ${isPrint ? "" : "shadow-md rounded"}`}>
+    <div className={`relative overflow-hidden bg-white p-8 w-full max-w-sm mx-auto ${isPrint ? "" : "shadow-md rounded"}`}>
+      {/* Watermark */}
+      <img
+        src={gscLogo}
+        alt=""
+        aria-hidden
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 opacity-[0.07] pointer-events-none select-none"
+      />
+      <div className="relative">
       <div className="text-center mb-6">
+        <img src={gscLogo} alt="Gold Standard Cleaners" className="h-16 mx-auto mb-2" />
         <h2 className={`text-2xl font-extrabold tracking-tighter ${isPrint ? "text-black" : "text-[#29ABE2]"}`}>
           GOLD STANDARD CLEANERS
         </h2>
@@ -214,6 +224,7 @@ function ReceiptPreview({ receipt, isPrint = false }: { receipt: Partial<Receipt
         <p className="font-medium">Gold Standard Cleaners</p>
         <p className="italic mt-0.5">Thank you for your business!</p>
       </div>
+      </div>{/* end relative wrapper */}
     </div>
   );
 }
