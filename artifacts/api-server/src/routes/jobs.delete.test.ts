@@ -167,6 +167,52 @@ describe("DELETE /jobs/:id — no linked receipts", () => {
   });
 });
 
+describe("DELETE /jobs/:id — jobWasDeleted flag", () => {
+  it("sets jobWasDeleted=true on every receipt that was linked to the deleted job", async () => {
+    const app = buildApp();
+
+    const jobId = await insertJob();
+    jobIds.push(jobId);
+
+    const rId1 = await insertReceipt(jobId, `TEST-RCT-DEL-005-${jobId}`);
+    const rId2 = await insertReceipt(jobId, `TEST-RCT-DEL-006-${jobId}`);
+    receiptIds.push(rId1, rId2);
+
+    const res = await request(app).delete(`/jobs/${jobId}`);
+    expect(res.status).toBe(204);
+
+    const receipts = await db
+      .select()
+      .from(receiptsTable)
+      .where(inArray(receiptsTable.id, [rId1, rId2]));
+    expect(receipts).toHaveLength(2);
+
+    for (const receipt of receipts) {
+      expect(receipt.jobWasDeleted).toBe(true);
+    }
+  });
+
+  it("leaves jobWasDeleted=false on receipts that were never linked to any job", async () => {
+    const app = buildApp();
+
+    const jobId = await insertJob();
+    jobIds.push(jobId);
+
+    // Receipt with no job link at all (jobId = null from the start)
+    const unlinkedReceiptId = await insertReceipt(null, `TEST-RCT-DEL-007-${jobId}`);
+    receiptIds.push(unlinkedReceiptId);
+
+    const res = await request(app).delete(`/jobs/${jobId}`);
+    expect(res.status).toBe(204);
+
+    const [unlinkedReceipt] = await db
+      .select()
+      .from(receiptsTable)
+      .where(eq(receiptsTable.id, unlinkedReceiptId));
+    expect(unlinkedReceipt.jobWasDeleted).toBe(false);
+  });
+});
+
 describe("DELETE /jobs/:id — error cases", () => {
   it("returns 404 when the job does not exist", async () => {
     const app = buildApp();
