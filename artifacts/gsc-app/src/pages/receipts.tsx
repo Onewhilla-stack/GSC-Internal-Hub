@@ -85,6 +85,7 @@ const editReceiptSchema = z.object({
     description: z.string().optional(),
     amount: z.coerce.number().min(0),
   })).optional(),
+  linkJobId: z.union([z.coerce.number().int().min(1, "Enter a valid job ID"), z.literal("")]).optional(),
 });
 
 const SERVICES = [
@@ -315,6 +316,17 @@ export default function Receipts() {
       enabled: !!editReceipt && sourceJobId != null,
     },
   });
+
+  // When a director types a job ID in the re-link input, load that job for preview.
+  const watchedLinkJobId = editForm.watch("linkJobId");
+  const linkJobIdNum = watchedLinkJobId !== "" && watchedLinkJobId !== undefined ? Number(watchedLinkJobId) : null;
+  const { data: linkJob, isLoading: linkJobLoading, isError: linkJobError } = useGetJob(linkJobIdNum ?? 0, {
+    query: {
+      queryKey: getGetJobQueryKey(linkJobIdNum ?? 0),
+      enabled: !!linkJobIdNum && linkJobIdNum > 0,
+      retry: false,
+    },
+  });
   const jobServices = sourceJob ? jobToServices(sourceJob) : null;
   const receiptDiffersFromJob =
     !!jobServices && !!editReceipt && !servicesEqual(jobServices, receiptToServices(editReceipt.items ?? []));
@@ -469,6 +481,7 @@ export default function Receipts() {
       items: multi
         ? its.map((it) => ({ serviceType: it.serviceType, description: it.description ?? "", amount: it.amount }))
         : [],
+      linkJobId: "",
     });
     setEditReceipt(r);
   }
@@ -502,9 +515,15 @@ export default function Receipts() {
     const finalItems = (data.items && data.items.length > 0)
       ? data.items
       : [{ serviceType: data.serviceType ?? "", description: data.description ?? "", amount: Number(data.amount) || 0 }];
+
+    // Re-link to a replacement job when the source was deleted and a new job ID was supplied.
+    const relinkPayload = (editReceipt?.jobWasDeleted && data.linkJobId)
+      ? { jobId: Number(data.linkJobId) }
+      : {};
+
     updateReceipt.mutate({
       id: editReceipt!.id,
-      data: { paymentStatus: data.paymentStatus, notes: data.notes, items: finalItems },
+      data: { paymentStatus: data.paymentStatus, notes: data.notes, items: finalItems, ...relinkPayload },
     });
   }
 
@@ -915,6 +934,42 @@ export default function Receipts() {
                   <p className="text-amber-800">
                     <span className="font-medium">Source job deleted.</span> This receipt was originally linked to a job that has since been deleted.
                   </p>
+                </div>
+              )}
+
+              {/* Re-link to a replacement job — directors only */}
+              {isDirector && editReceipt?.jobWasDeleted && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 space-y-2">
+                  <p className="text-sm font-medium text-blue-900">Link to a replacement job</p>
+                  <p className="text-xs text-blue-700">Enter the ID of an existing job to re-associate this receipt and clear the warning.</p>
+                  <FormField control={editForm.control} name="linkJobId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-blue-800">Job ID</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="e.g. 42"
+                          className="bg-white max-w-[160px]"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  {linkJobIdNum && linkJobLoading && (
+                    <p className="text-xs text-blue-600 flex items-center gap-1"><Spinner className="h-3 w-3" /> Looking up job…</p>
+                  )}
+                  {linkJobIdNum && !linkJobLoading && linkJob && (
+                    <div className="rounded-md border border-blue-300 bg-white p-2 text-xs space-y-0.5">
+                      <p className="font-semibold text-blue-900">{(linkJob as any).clientName}</p>
+                      <p className="text-gray-500">{formatDate((linkJob as any).date)} · {(linkJob as any).serviceType} · {formatKES(Number((linkJob as any).amount))}</p>
+                    </div>
+                  )}
+                  {linkJobIdNum && !linkJobLoading && linkJobError && (
+                    <p className="text-xs text-red-600">Job #{linkJobIdNum} not found.</p>
+                  )}
                 </div>
               )}
 

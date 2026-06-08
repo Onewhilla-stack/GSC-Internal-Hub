@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, receiptsTable, activityLogTable } from "@workspace/db";
+import { db, receiptsTable, jobsTable, activityLogTable } from "@workspace/db";
 import { eq, ilike, or, and, gte, lt, sql } from "drizzle-orm";
 import {
   CreateReceiptBody,
@@ -202,6 +202,24 @@ router.patch("/receipts/:id", requireAuth, async (req, res): Promise<void> => {
     updateValues.serviceType = items.length === 1 ? items[0].serviceType : "Multiple Services";
     updateValues.amount = total.toFixed(2);
     updateValues.description = null;
+  }
+
+  // Re-link receipt to a replacement job (director only).
+  // Supplying a valid jobId clears the jobWasDeleted flag.
+  if (parsed.data.jobId !== undefined) {
+    if (req.session.role !== "director") {
+      res.status(403).json({ error: "Director access required to re-link a job" });
+      return;
+    }
+    if (parsed.data.jobId !== null) {
+      const [job] = await db.select({ id: jobsTable.id }).from(jobsTable).where(eq(jobsTable.id, parsed.data.jobId));
+      if (!job) {
+        res.status(400).json({ error: `Job #${parsed.data.jobId} not found` });
+        return;
+      }
+    }
+    updateValues.jobId = parsed.data.jobId;
+    updateValues.jobWasDeleted = false;
   }
 
   const [row] = await db.update(receiptsTable)

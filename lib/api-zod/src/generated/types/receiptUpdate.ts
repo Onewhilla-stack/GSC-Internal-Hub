@@ -10,6 +10,11 @@ import type { ReceiptItemInput } from './receiptItemInput';
 export interface ReceiptUpdate {
   paymentStatus?: string;
   notes?: string;
+  /**
+     * Re-link receipt to a replacement job (director only). Clears jobWasDeleted when a valid jobId is supplied.
+     * @nullable
+     */
+  jobId?: number | null;
   /** @minItems 1 */
   items?: ReceiptItemInput[];
 }

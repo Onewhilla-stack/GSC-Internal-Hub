@@ -677,6 +677,7 @@ export const UpdateReceiptParams = zod.object({
 export const UpdateReceiptBody = zod.object({
   "paymentStatus": zod.string().optional(),
   "notes": zod.string().optional(),
+  "jobId": zod.number().nullish().describe('Re-link receipt to a replacement job (director only). Clears jobWasDeleted when a valid jobId is supplied.'),
   "items": zod.array(zod.object({
   "serviceType": zod.string(),
   "description": zod.string().optional(),
