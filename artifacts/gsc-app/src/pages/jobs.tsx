@@ -34,11 +34,22 @@ const jobSchema = z.object({
   date: z.string().min(1, "Date required"),
   clientName: z.string().min(1, "Client name required"),
   clientPhone: z.string().optional(),
-  serviceType: z.string().min(1, "Service required"),
+  serviceType: z.string().optional(),
   description: z.string().optional(),
   location: z.string().optional(),
   amount: z.coerce.number().min(0, "Invalid amount"),
   teamMembers: z.coerce.number().min(0, "Cannot be negative"),
+  items: z.array(z.object({
+    serviceType: z.string().min(1, "Service required"),
+    description: z.string().optional(),
+    amount: z.coerce.number().min(0),
+  })).optional(),
+}).superRefine((data, ctx) => {
+  if (!data.items || data.items.length === 0) {
+    if (!data.serviceType || data.serviceType.trim() === "") {
+      ctx.addIssue({ code: "custom", path: ["serviceType"], message: "Service required" });
+    }
+  }
 });
 
 type JobFormData = z.infer<typeof jobSchema>;
@@ -99,6 +110,10 @@ export default function Jobs() {
     }
   });
 
+  const createItemsArray = useFieldArray({ control: form.control, name: "items" });
+  const createItemsWatch = form.watch("items") ?? [];
+  const isMultiCreate = createItemsWatch.length > 0;
+
   const editForm = useForm<EditJobFormData>({
     resolver: zodResolver(editJobSchema),
     defaultValues: { date: "", clientName: "", serviceType: "", description: "", location: "", amount: 0, teamMembers: 1, items: [] },
@@ -119,7 +134,7 @@ export default function Jobs() {
         const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         if (jobDate.startsWith(currentMonthPrefix)) applyPreset("this-month");
         queryClient.invalidateQueries();
-        form.reset({ ...form.getValues(), clientName: "", clientPhone: "", amount: 0, location: "", description: "" });
+        form.reset({ ...form.getValues(), clientName: "", clientPhone: "", amount: 0, location: "", description: "", serviceType: "", items: [] });
         toast({ title: "Job logged successfully" });
       }
     }
@@ -249,7 +264,35 @@ export default function Jobs() {
   const amount = form.watch("amount");
   const teamMembers = form.watch("teamMembers");
   const wages = (Number(teamMembers) || 0) * wageRate;
-  const netIncome = (amount || 0) - wages;
+  const createTotal = isMultiCreate
+    ? createItemsWatch.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
+    : (Number(amount) || 0);
+  const netIncome = createTotal - wages;
+
+  function convertCreateToMulti() {
+    const cur = form.getValues();
+    createItemsArray.replace([
+      { serviceType: cur.serviceType || "", description: cur.description || "", amount: Number(cur.amount) || 0 },
+      { serviceType: "", description: "", amount: 0 },
+    ]);
+  }
+
+  function collapseCreateToSingle() {
+    const only = (form.getValues("items") ?? [])[0];
+    form.setValue("serviceType", only?.serviceType ?? "");
+    form.setValue("description", only?.description ?? "");
+    form.setValue("amount", Number(only?.amount) || 0);
+    createItemsArray.replace([]);
+  }
+
+  function submitCreate(data: JobFormData) {
+    const { items, serviceType, amount: amt, ...rest } = data;
+    if (items && items.length > 0) {
+      createJob.mutate({ data: { ...rest, items } });
+    } else {
+      createJob.mutate({ data: { ...rest, serviceType: serviceType!, amount: amt } });
+    }
+  }
 
   const editTotal = isMultiEdit
     ? editItems.reduce((s, it) => s + (Number(it?.amount) || 0), 0)
@@ -330,47 +373,108 @@ export default function Jobs() {
       <Card className="border-t-4 border-t-primary shadow-sm bg-white">
         <CardContent className="p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createJob.mutate({ data }))} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-              <FormField control={form.control} name="date" render={({ field }) => (
-                <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="clientName" render={({ field }) => (
-                <FormItem className="lg:col-span-2"><FormLabel>Client Name</FormLabel><FormControl><Input placeholder="Name..." {...field} /></FormControl><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="clientPhone" render={({ field }) => (
-                <FormItem className="lg:col-span-2"><FormLabel>Client Phone</FormLabel><FormControl><Input type="tel" placeholder="07xx xxx xxx" {...field} value={field.value ?? ""} /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="serviceType" render={({ field }) => (
-                <FormItem className="lg:col-span-2"><FormLabel>Service</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
-                    <SelectContent>{SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                  </Select>
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="description" render={({ field }) => (
-                <FormItem className="lg:col-span-2"><FormLabel>Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet, 5-seater, 8kg..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="teamMembers" render={({ field }) => (
-                <FormItem><FormLabel>Team</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="amount" render={({ field }) => (
-                <FormItem><FormLabel>Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
-              )} />
-              <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
-                <div className="text-xs text-gray-500">Auto Wages</div>
-                <div className="font-mono text-sm text-red-600">{formatKES(wages)}</div>
+            <form onSubmit={form.handleSubmit(submitCreate)} className="space-y-4">
+              {/* Row 1: Date, Client, Phone, Location */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FormField control={form.control} name="date" render={({ field }) => (
+                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="clientName" render={({ field }) => (
+                  <FormItem><FormLabel>Client Name</FormLabel><FormControl><Input placeholder="Name..." {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="clientPhone" render={({ field }) => (
+                  <FormItem><FormLabel>Client Phone</FormLabel><FormControl><Input type="tel" placeholder="07xx xxx xxx" {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="location" render={({ field }) => (
+                  <FormItem><FormLabel>Location</FormLabel><FormControl><Input placeholder="e.g. Westlands, Nairobi" {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                )} />
               </div>
-              {isDirector && (
-                <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
-                  <div className="text-xs text-gray-500">Net Income</div>
-                  <div className="font-mono text-sm text-green-600 font-bold">{formatKES(netIncome)}</div>
+
+              {/* Row 2: Single-service fields (hidden in multi-service mode) */}
+              {!isMultiCreate && (
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                  <FormField control={form.control} name="serviceType" render={({ field }) => (
+                    <FormItem className="lg:col-span-2"><FormLabel>Service</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
+                        <SelectContent>{SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="description" render={({ field }) => (
+                    <FormItem className="lg:col-span-2"><FormLabel>Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet, 5-seater, 8kg..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="amount" render={({ field }) => (
+                    <FormItem><FormLabel>Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
+                  )} />
+                  <Button type="button" variant="outline" size="sm" className="gap-1 self-end" onClick={convertCreateToMulti}>
+                    <Plus className="h-3.5 w-3.5" /> Add service
+                  </Button>
                 </div>
               )}
-              <Button type="submit" disabled={createJob.isPending} className={`bg-secondary text-black hover:bg-secondary/90 w-full ${isDirector ? "lg:col-span-2" : "lg:col-span-3"}`}>
-                {createJob.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                LOG JOB
-              </Button>
+
+              {/* Multi-service rows */}
+              {isMultiCreate && (
+                <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">Services</span>
+                    <div className="flex items-center gap-2">
+                      {createItemsArray.fields.length === 1 && (
+                        <Button type="button" variant="ghost" size="sm" className="text-primary" onClick={collapseCreateToSingle}>
+                          Single service
+                        </Button>
+                      )}
+                      <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => createItemsArray.append({ serviceType: "", description: "", amount: 0 })}>
+                        <Plus className="h-3.5 w-3.5" /> Add service
+                      </Button>
+                    </div>
+                  </div>
+                  {createItemsArray.fields.map((f, idx) => (
+                    <div key={f.id} className="flex items-end gap-3">
+                      <FormField control={form.control} name={`items.${idx}.serviceType`} render={({ field }) => (
+                        <FormItem className="flex-1"><FormLabel className="text-xs">Service</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl>
+                            <SelectContent>{SERVICES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`items.${idx}.description`} render={({ field }) => (
+                        <FormItem className="flex-1"><FormLabel className="text-xs">Details</FormLabel><FormControl><Input placeholder="e.g. 5×6 duvet..." {...field} value={field.value ?? ""} /></FormControl></FormItem>
+                      )} />
+                      <FormField control={form.control} name={`items.${idx}.amount`} render={({ field }) => (
+                        <FormItem className="w-28"><FormLabel className="text-xs">Amount (KES)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
+                      )} />
+                      <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" disabled={createItemsArray.fields.length === 1} onClick={() => createItemsArray.remove(idx)} title="Remove">
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Row 3: Team, Wages, Net Income, Submit */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
+                <FormField control={form.control} name="teamMembers" render={({ field }) => (
+                  <FormItem><FormLabel>Team Members</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl></FormItem>
+                )} />
+                <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                  <div className="text-xs text-gray-500">Auto Wages</div>
+                  <div className="font-mono text-sm text-red-600">{formatKES(wages)}</div>
+                </div>
+                {isDirector && (
+                  <div className="bg-gray-50 p-2 rounded-md border border-gray-200">
+                    <div className="text-xs text-gray-500">Net Income</div>
+                    <div className="font-mono text-sm text-green-600 font-bold">{formatKES(netIncome)}</div>
+                  </div>
+                )}
+                <Button type="submit" disabled={createJob.isPending} className={`bg-secondary text-black hover:bg-secondary/90 w-full col-span-2 ${isDirector ? "lg:col-span-3" : "lg:col-span-4"}`}>
+                  {createJob.isPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                  LOG JOB
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>
