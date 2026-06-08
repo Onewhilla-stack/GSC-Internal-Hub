@@ -17,6 +17,7 @@ import Receipts from "@/pages/receipts";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import ActivityLog from "@/pages/activity-log";
+import Quotations from "@/pages/quotations";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/analytics" component={() => <DirectorRoute component={Analytics} />} />
       <Route path="/activity-log" component={() => <DirectorRoute component={ActivityLog} />} />
       <Route path="/settings" component={() => <DirectorRoute component={Settings} />} />
+      <Route path="/quotations" component={() => <ProtectedRoute component={Quotations} />} />
       <Route component={NotFound} />
     </Switch>
   );

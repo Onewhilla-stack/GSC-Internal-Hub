@@ -12,6 +12,7 @@ import {
   LogOut,
   Wallet,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const directorNavItems = [
   { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
+  { href: "/quotations", label: "Quotations", icon: FileText },
   { href: "/analytics", label: "Analytics", icon: LineChart },
   { href: "/activity-log", label: "Activity Log", icon: ClipboardList },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -33,6 +35,7 @@ const workerNavItems = [
   { href: "/dashboard", label: "My Jobs", icon: Briefcase },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
+  { href: "/quotations", label: "Quotations", icon: FileText },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

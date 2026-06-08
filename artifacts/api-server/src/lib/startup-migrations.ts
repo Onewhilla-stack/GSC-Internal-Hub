@@ -18,6 +18,26 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS job_was_deleted boolean NOT NULL DEFAULT false
     `);
 
+    // Added by Task #80 (Quotation Generator): stores client quotations with
+    // GSC-QTN-NNN numbering, line items (JSONB), and Pending/Accepted/Declined status.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS quotations (
+        id          serial PRIMARY KEY,
+        quotation_number text NOT NULL UNIQUE,
+        client_name text NOT NULL,
+        location    text,
+        date        text NOT NULL,
+        expiry_date text,
+        status      text NOT NULL DEFAULT 'Pending',
+        items       jsonb NOT NULL DEFAULT '[]',
+        amount      numeric(12,2) NOT NULL,
+        notes       text,
+        created_by  text,
+        created_at  timestamptz NOT NULL DEFAULT now(),
+        updated_at  timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+
     logger.info("Startup migrations applied");
   } catch (err) {
     logger.error({ err }, "Startup migration failed");

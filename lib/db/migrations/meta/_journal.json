@@ -15,6 +15,13 @@
       "when": 1780647421211,
       "tag": "0001_slimy_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780918554653,
+      "tag": "0002_add_quotations",
+      "breakpoints": true
     }
   ]
 }

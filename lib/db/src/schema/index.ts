@@ -3,5 +3,6 @@ export * from "./clients";
 export * from "./jobs";
 export * from "./expenses";
 export * from "./receipts";
+export * from "./quotations";
 export * from "./settings";
 export * from "./activity-log";

@@ -717,6 +717,113 @@ export const DeleteReceiptParams = zod.object({
 
 
 /**
+ * @summary List all quotations
+ */
+export const ListQuotationsQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional()
+})
+
+export const ListQuotationsResponseItem = zod.object({
+  "id": zod.number(),
+  "quotationNumber": zod.string(),
+  "clientName": zod.string(),
+  "location": zod.string().nullish(),
+  "date": zod.string(),
+  "expiryDate": zod.string().nullish(),
+  "status": zod.string(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})),
+  "amount": zod.number(),
+  "notes": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
+})
+export const ListQuotationsResponse = zod.array(ListQuotationsResponseItem)
+
+
+/**
+ * @summary Create a quotation
+ */
+export const createQuotationBodyItemsItemAmountMin = 0;
+
+
+
+
+export const CreateQuotationBody = zod.object({
+  "clientName": zod.string(),
+  "location": zod.string().optional(),
+  "date": zod.string(),
+  "expiryDate": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().optional(),
+  "amount": zod.number().min(createQuotationBodyItemsItemAmountMin)
+})).min(1)
+})
+
+
+/**
+ * @summary Update quotation status or details
+ */
+export const UpdateQuotationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateQuotationBodyItemsItemAmountMin = 0;
+
+
+
+
+export const UpdateQuotationBody = zod.object({
+  "clientName": zod.string().optional(),
+  "location": zod.string().nullish(),
+  "date": zod.string().optional(),
+  "expiryDate": zod.string().nullish(),
+  "status": zod.string().optional(),
+  "notes": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().optional(),
+  "amount": zod.number().min(updateQuotationBodyItemsItemAmountMin)
+})).min(1).optional()
+})
+
+export const UpdateQuotationResponse = zod.object({
+  "id": zod.number(),
+  "quotationNumber": zod.string(),
+  "clientName": zod.string(),
+  "location": zod.string().nullish(),
+  "date": zod.string(),
+  "expiryDate": zod.string().nullish(),
+  "status": zod.string(),
+  "items": zod.array(zod.object({
+  "serviceType": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.number()
+})),
+  "amount": zod.number(),
+  "notes": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete a quotation (director only)
+ */
+export const DeleteQuotationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary Monthly P&L summary for all months
  */
 export const GetPLSummaryResponseItem = zod.object({

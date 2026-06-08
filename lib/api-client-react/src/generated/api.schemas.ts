@@ -407,6 +407,64 @@ export interface ServiceRevenueTrend {
   months: ServiceRevenueTrendMonth[];
 }
 
+export interface QuotationItem {
+  serviceType: string;
+  /** @nullable */
+  description?: string | null;
+  amount: number;
+}
+
+export interface QuotationItemInput {
+  serviceType: string;
+  description?: string;
+  /** @minimum 0 */
+  amount: number;
+}
+
+export interface Quotation {
+  id: number;
+  quotationNumber: string;
+  clientName: string;
+  /** @nullable */
+  location?: string | null;
+  date: string;
+  /** @nullable */
+  expiryDate?: string | null;
+  status: string;
+  items: QuotationItem[];
+  amount: number;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface QuotationInput {
+  clientName: string;
+  location?: string;
+  date: string;
+  expiryDate?: string;
+  notes?: string;
+  /** @minItems 1 */
+  items: QuotationItemInput[];
+}
+
+export interface QuotationUpdate {
+  clientName?: string;
+  /** @nullable */
+  location?: string | null;
+  date?: string;
+  /** @nullable */
+  expiryDate?: string | null;
+  status?: string;
+  /** @nullable */
+  notes?: string | null;
+  /** @minItems 1 */
+  items?: QuotationItemInput[];
+}
+
 export interface Settings {
   wagePerPersonPerDay: number;
   monthlyRent: number;
@@ -569,6 +627,11 @@ from?: string;
  * Range end date YYYY-MM-DD (inclusive)
  */
 to?: string;
+};
+
+export type ListQuotationsParams = {
+search?: string;
+status?: string;
 };
 
 export type GetMonthDrillParams = {
