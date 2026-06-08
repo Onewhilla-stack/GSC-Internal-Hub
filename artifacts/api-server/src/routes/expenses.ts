@@ -165,6 +165,16 @@ router.delete("/expenses/:id", requireAuth, requireDirector, async (req, res): P
     return;
   }
 
+  // ── UNLINK SECTION ────────────────────────────────────────────────────────
+  // Before deleting the expense, unlink or delete any child rows that
+  // reference expenses.id via a foreign key.  Add one block per table here.
+  //
+  // No child tables exist today (confirmed by schema audit), so this section
+  // is intentionally empty.  When a new table with an expenses FK is added
+  // (e.g. expense_attachments, expense_import_links), add the unlink step here
+  // and a matching test in expenses.delete.test.ts before merging.
+  // ─────────────────────────────────────────────────────────────────────────
+
   const [row] = await db.delete(expensesTable).where(eq(expensesTable.id, params.data.id)).returning();
   if (!row) {
     res.status(404).json({ error: "Expense not found" });
