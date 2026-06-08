@@ -603,7 +603,7 @@ export default function Quotations() {
               </div>
 
               <div>
-                <FormLabel className="block mb-2">Services</FormLabel>
+                <p className="text-sm font-medium mb-2">Services</p>
                 <LineItemsEditor
                   fields={createItems.fields}
                   control={createForm.control}
@@ -712,7 +712,7 @@ export default function Quotations() {
                   />
 
                   <div>
-                    <FormLabel className="block mb-2">Services</FormLabel>
+                    <p className="text-sm font-medium mb-2">Services</p>
                     <LineItemsEditor
                       fields={editItems.fields}
                       control={editForm.control}
