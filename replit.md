@@ -11,6 +11,7 @@ Internal business management tool for a cleaning company in Nairobi, Kenya.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm run codegen:check` — regenerate from the spec and fail if the committed generated output is stale (guards against "mystery build break" from out-of-date `lib/api-zod` / `lib/api-client-react`); also registered as the `codegen` validation check
 - `pnpm run guards` — runs `schema:check` then `codegen:check` in sequence; single command to verify the project is fully in sync before deploying; also registered as the `guards` validation check
+- `pnpm run ci` — full pre-deploy safety net: `guards` + `build` in one step; also registered as the `ci` validation check
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm run schema:check` — detect schema drift (Drizzle schema vs committed snapshot); also registered as the `schema` validation check
 - Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — session signing key

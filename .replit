@@ -26,7 +26,7 @@ args = "schema"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "guards"
+args = "ci"
 
 [[workflows.workflow]]
 name = "codegen"
@@ -51,12 +51,12 @@ args = "pnpm run schema:check"
 isValidation = true
 
 [[workflows.workflow]]
-name = "guards"
+name = "ci"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm run guards"
+args = "pnpm run ci"
 
 [workflows.workflow.metadata]
 isValidation = true

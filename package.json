@@ -8,6 +8,7 @@
     "codegen:check": "bash ./scripts/check-codegen.sh",
     "schema:check": "bash ./scripts/check-schema-drift.sh",
     "guards": "pnpm run schema:check && pnpm run codegen:check",
+    "ci": "pnpm run guards && pnpm run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
