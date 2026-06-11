@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink, Printer, ChevronUp, ChevronDown } from "lucide-react";
+import { Pencil, Trash2, ReceiptText, Upload, Plus, ExternalLink, Printer, ChevronUp, ChevronDown, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { StatusBadge, worstStatus } from "@/components/status-badge";
 import { useAuth } from "@/lib/auth";
@@ -285,6 +285,29 @@ export default function Jobs() {
     createItemsArray.replace([]);
   }
 
+  function exportCSV() {
+    if (!jobs?.length) return;
+    const headers = ["Date", "Client", "Phone", "Location", "Service", "Description", "Amount (KES)", "Team", "Wages (KES)", "Net Income (KES)"];
+    const rows = (jobs as any[]).map(j => [
+      j.date,
+      `"${(j.clientName ?? "").replace(/"/g, '""')}"`,
+      j.clientPhone ?? "",
+      `"${(j.location ?? "").replace(/"/g, '""')}"`,
+      `"${(j.serviceType ?? "").replace(/"/g, '""')}"`,
+      `"${(j.description ?? "").replace(/"/g, '""')}"`,
+      j.amount,
+      j.teamMembers,
+      j.wages,
+      j.netIncome,
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `gsc-jobs-${from ?? "all"}.csv`;
+    link.click();
+  }
+
   function submitCreate(data: JobFormData) {
     const { items, serviceType, amount: amt, ...rest } = data;
     if (items && items.length > 0) {
@@ -365,6 +388,9 @@ export default function Jobs() {
           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsv} />
           <Button variant="outline" className="gap-2" disabled={importJobs.isPending} onClick={() => fileInputRef.current?.click()}>
             {importJobs.isPending ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />} Import CSV
+          </Button>
+          <Button variant="outline" className="gap-2" disabled={!jobs?.length} onClick={exportCSV}>
+            <Download className="h-4 w-4" /> Export CSV
           </Button>
           <DateRangePicker />
         </div>

@@ -156,10 +156,10 @@ function ReceiptPreview({ receipt, isPrint = false }: { receipt: Partial<Receipt
       <div className="relative">
       <div className="text-center mb-6">
         <img src={gscLogo} alt="Gold Standard Cleaners" className="h-16 mx-auto mb-2" />
-        <h2 className={`text-2xl font-extrabold tracking-tighter ${isPrint ? "text-black" : "text-[#29ABE2]"}`}>
+        <h2 className="text-2xl font-extrabold tracking-tighter text-[#29ABE2]">
           GOLD STANDARD CLEANERS
         </h2>
-        <p className={`text-xs font-bold tracking-widest uppercase mt-1 ${isPrint ? "text-black" : "text-[#F5C518]"}`}>
+        <p className="text-xs font-bold tracking-widest uppercase mt-1 text-[#F5C518]">
           HOME CLEANING EXPERTS
         </p>
         <div className="mt-3 text-xs text-gray-500 space-y-0.5">

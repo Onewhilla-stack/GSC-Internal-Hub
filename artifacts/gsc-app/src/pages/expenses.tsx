@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useDateRange } from "@/lib/date-range";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { Upload } from "lucide-react";
+import { Upload, Download } from "lucide-react";
 import Papa from "papaparse";
 import { parseExpenseCsvRows } from "@/lib/csv-import";
 
@@ -79,6 +79,17 @@ export default function Expenses() {
     createExpense.mutate({ data });
   }
 
+  function exportCSV() {
+    if (!expenses?.length) return;
+    const rows = expenses.map(e => [e.date, e.category, `"${e.description.replace(/"/g, '""')}"`, e.amount]);
+    const csv = [["Date", "Category", "Description", "Amount (KES)"], ...rows].map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `gsc-expenses-${from ?? "all"}.csv`;
+    link.click();
+  }
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,6 +125,9 @@ export default function Expenses() {
           </Select>
           <DateRangePicker />
           
+          <Button variant="outline" className="gap-2" onClick={exportCSV} disabled={!expenses?.length}>
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
           <div className="relative">
             <input 
               type="file" 

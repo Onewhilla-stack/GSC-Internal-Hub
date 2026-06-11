@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, quotationsTable, activityLogTable } from "@workspace/db";
+import { db, quotationsTable, activityLogTable, jobsTable, settingsTable } from "@workspace/db";
 import { eq, ilike, and, sql } from "drizzle-orm";
 import {
   CreateQuotationBody,
@@ -115,6 +115,13 @@ router.patch("/quotations/:id", requireAuth, async (req, res): Promise<void> => 
     return;
   }
 
+  // Fetch existing row before update so we can detect status transitions.
+  const [existing] = await db.select().from(quotationsTable).where(eq(quotationsTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Quotation not found" });
+    return;
+  }
+
   const updateValues: Partial<typeof quotationsTable.$inferInsert> & { updatedAt: Date } = {
     updatedAt: new Date(),
   };
@@ -148,6 +155,42 @@ router.patch("/quotations/:id", requireAuth, async (req, res): Promise<void> => 
   }
 
   await logActivity(username, "Edited", row.id, `${row.quotationNumber} — status: ${row.status}`);
+
+  // Auto-create a job when a quotation transitions to Accepted for the first time.
+  if (parsed.data.status === "Accepted" && existing.status !== "Accepted") {
+    const items = (row.items as { serviceType: string; description: string | null; amount: number }[]) ?? [];
+    const total = items.reduce((s, it) => s + it.amount, 0);
+    const serviceType = items.length > 1 ? "Multiple Services" : (items[0]?.serviceType ?? "Service");
+    const description = items.length === 1 ? (items[0]?.description ?? null) : null;
+
+    const [wageSetting] = await db.select().from(settingsTable).where(eq(settingsTable.key, "wagePerPersonPerDay"));
+    const wageRate = wageSetting ? parseFloat(wageSetting.value) : 1000;
+    const teamMembers = 1;
+    const wages = teamMembers * wageRate;
+    const netIncome = total - wages;
+
+    const [newJob] = await db.insert(jobsTable).values({
+      date: row.date,
+      clientName: row.clientName,
+      location: row.location ?? null,
+      serviceType,
+      description,
+      amount: String(total),
+      teamMembers,
+      wages: String(wages),
+      netIncome: String(netIncome),
+      items: items.length > 0 ? items : null,
+      createdBy: username,
+    }).returning({ id: jobsTable.id });
+
+    await db.insert(activityLogTable).values({
+      username,
+      action: "Added",
+      recordType: "Job",
+      recordId: newJob.id,
+      details: `Auto-created from ${row.quotationNumber} — ${serviceType} for ${row.clientName} on ${row.date} — KES ${total.toFixed(2)}`,
+    });
+  }
 
   res.json(formatRow(row));
 });

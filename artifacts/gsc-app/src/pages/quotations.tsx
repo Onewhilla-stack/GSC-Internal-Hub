@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Eye, Printer, Pencil, Trash2, FileText, Clock, CheckCircle, XCircle, X } from "lucide-react";
+import { Search, Plus, Eye, Printer, Pencil, Trash2, FileText, Clock, CheckCircle, XCircle, X, Download } from "lucide-react";
 import gscLogo from "@assets/GSC_Logo_1780918691102.png";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -102,10 +102,10 @@ function QuotationPreview({ q, isPrint = false }: { q: Partial<QuotationRow> & {
       <div className="relative">
       <div className="text-center mb-6">
         <img src={gscLogo} alt="Gold Standard Cleaners" className="h-16 mx-auto mb-2" />
-        <h2 className={`text-2xl font-extrabold tracking-tighter ${isPrint ? "text-black" : "text-[#29ABE2]"}`}>
+        <h2 className="text-2xl font-extrabold tracking-tighter text-[#29ABE2]">
           GOLD STANDARD CLEANERS
         </h2>
-        <p className={`text-xs font-bold tracking-widest uppercase mt-1 ${isPrint ? "text-black" : "text-[#F5C518]"}`}>
+        <p className="text-xs font-bold tracking-widest uppercase mt-1 text-[#F5C518]">
           HOME CLEANING EXPERTS
         </p>
         <div className="mt-3 text-xs text-gray-500 space-y-0.5">
@@ -415,6 +415,26 @@ export default function Quotations() {
 
   const rows = (quotations ?? []) as QuotationRow[];
 
+  function exportCSV() {
+    if (!rows.length) return;
+    const headers = ["Quote No", "Client", "Location", "Date", "Valid Until", "Status", "Total (KES)"];
+    const data = rows.map(q => [
+      q.quotationNumber,
+      `"${q.clientName.replace(/"/g, '""')}"`,
+      `"${(q.location ?? "").replace(/"/g, '""')}"`,
+      q.date,
+      q.expiryDate ?? "",
+      q.status,
+      q.amount,
+    ]);
+    const csv = [headers, ...data].map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `gsc-quotations-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+  }
+
   const stats = {
     total: rows.length,
     pending: rows.filter(q => q.status === "Pending").length,
@@ -430,9 +450,14 @@ export default function Quotations() {
           <h1 className="text-2xl font-bold text-gray-900">Quotations</h1>
           <p className="text-sm text-gray-500 mt-0.5">Generate and track client quotations</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-white">
-          <Plus className="h-4 w-4 mr-2" /> New Quotation
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" disabled={!rows.length} onClick={exportCSV}>
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-white">
+            <Plus className="h-4 w-4 mr-2" /> New Quotation
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

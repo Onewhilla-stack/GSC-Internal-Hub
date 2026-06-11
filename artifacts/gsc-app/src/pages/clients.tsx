@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useListClients, useCreateClient, useUpdateClient, useDeleteClient, useImportClients, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/lib/format";
@@ -48,9 +48,13 @@ export default function Clients() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const PAGE_SIZE = 20;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
   const [editClient, setEditClient] = useState<{ id: number; clientCode: string; name: string } & ClientFormData | null>(null);
 
   // CSV import preview state
@@ -203,6 +207,11 @@ export default function Clients() {
     setEditClient({ id: c.id, clientCode: c.clientCode, name: c.name, phone: c.phone ?? "", email: c.email ?? "", location: c.location ?? "", status: c.status });
   }
 
+  const allClients = clients ?? [];
+  const displayedClients = search
+    ? allClients
+    : allClients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = search ? 1 : Math.ceil(allClients.length / PAGE_SIZE);
   const colCount = isDirector ? 8 : 6;
 
   return (
@@ -393,10 +402,10 @@ export default function Clients() {
               <TableBody>
                 {isLoading ? (
                   <TableRow><TableCell colSpan={colCount} className="text-center h-24"><Spinner /></TableCell></TableRow>
-                ) : clients?.length === 0 ? (
+                ) : allClients.length === 0 ? (
                   <TableRow><TableCell colSpan={colCount} className="text-center h-24 text-gray-500">No clients found</TableCell></TableRow>
                 ) : (
-                  clients?.map(client => (
+                  displayedClients.map(client => (
                     <TableRow key={client.id} className="cursor-pointer hover:bg-gray-50">
                       <TableCell className="font-mono text-sm text-gray-500" onClick={() => setLocation(`/clients/${client.id}`)}>{client.clientCode}</TableCell>
                       <TableCell className="font-medium" onClick={() => setLocation(`/clients/${client.id}`)}>{client.name}</TableCell>
@@ -446,6 +455,22 @@ export default function Clients() {
               </TableBody>
             </Table>
           </div>
+          {!search && totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+              <span className="text-sm text-gray-500">
+                {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, allClients.length)} of {allClients.length} clients
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                  ← Previous
+                </Button>
+                <span className="text-sm text-gray-600 px-1">{page} / {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                  Next →
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
