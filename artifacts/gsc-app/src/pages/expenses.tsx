@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListExpenses, useCreateExpense, useImportExpenses, useGetExpensesMonthlySummary, getListExpensesQueryKey, getGetExpensesMonthlySummaryQueryKey } from "@workspace/api-client-react";
+import { useListExpenses, useCreateExpense, useDeleteExpense, useImportExpenses, useGetExpensesMonthlySummary, getListExpensesQueryKey, getGetExpensesMonthlySummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatKES, formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useDateRange } from "@/lib/date-range";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { Upload, Download } from "lucide-react";
+import { Upload, Download, Trash2 } from "lucide-react";
 import Papa from "papaparse";
 import { parseExpenseCsvRows } from "@/lib/csv-import";
 
@@ -62,6 +63,16 @@ export default function Expenses() {
           amount: 0,
         });
         toast({ title: "Expense logged" });
+      }
+    }
+  });
+
+  const deleteExpense = useDeleteExpense({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetExpensesMonthlySummaryQueryKey({ from, to }) });
+        toast({ title: "Expense deleted" });
       }
     }
   });
@@ -214,20 +225,44 @@ export default function Expenses() {
                     <TableHead className="text-white">Category</TableHead>
                     <TableHead className="text-white">Description</TableHead>
                     <TableHead className="text-white text-right">Amount</TableHead>
+                    <TableHead className="text-white w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center h-24"><Spinner /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24"><Spinner /></TableCell></TableRow>
                   ) : expenses?.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center h-24 text-gray-500">No expenses recorded</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24 text-gray-500">No expenses recorded</TableCell></TableRow>
                   ) : (
                     expenses?.map(expense => (
-                      <TableRow key={expense.id}>
+                      <TableRow key={expense.id} className="group">
                         <TableCell>{formatDate(expense.date)}</TableCell>
                         <TableCell><span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{expense.category}</span></TableCell>
                         <TableCell>{expense.description}</TableCell>
                         <TableCell className="text-right font-mono font-medium">{formatKES(expense.amount)}</TableCell>
+                        <TableCell>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 hover:bg-red-50">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete expense?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {expense.category} — {expense.description} ({formatKES(expense.amount)}) on {formatDate(expense.date)}. This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => deleteExpense.mutate({ id: expense.id })}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
